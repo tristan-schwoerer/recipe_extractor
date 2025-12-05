@@ -11,11 +11,9 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers import selector
 
-from .const import DOMAIN
+from .const import DOMAIN, AVAILABLE_MODELS, DEFAULT_MODEL, CONF_TODO_ENTITY, CONF_DEFAULT_MODEL
 
 _LOGGER = logging.getLogger(__name__)
-
-CONF_TODO_ENTITY = "default_todo_entity"
 
 
 class RecipeExtractorConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
@@ -77,6 +75,15 @@ class RecipeExtractorOptionsFlow(config_entries.OptionsFlow):
                     ): selector.EntitySelector(
                         selector.EntitySelectorConfig(
                             domain="todo",
+                        ),
+                    ),
+                    vol.Optional(
+                        CONF_DEFAULT_MODEL,
+                        default=self.config_entry.options.get(CONF_DEFAULT_MODEL, DEFAULT_MODEL),
+                    ): selector.SelectSelector(
+                        selector.SelectSelectorConfig(
+                            options=AVAILABLE_MODELS,
+                            mode=selector.SelectSelectorMode.DROPDOWN,
                         ),
                     ),
                 }
