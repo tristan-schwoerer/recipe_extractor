@@ -27,6 +27,10 @@ class RecipeExtractorConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
         """Handle the initial step."""
+        # Check if already configured
+        await self.async_set_unique_id(DOMAIN)
+        self._abort_if_unique_id_configured()
+        
         if user_input is not None:
             # Create the config entry
             return self.async_create_entry(
@@ -38,9 +42,6 @@ class RecipeExtractorConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         return self.async_show_form(
             step_id="user",
             data_schema=vol.Schema({}),
-            description_placeholders={
-                "description": "This integration allows you to extract recipes from URLs using AI."
-            },
         )
 
     @staticmethod
