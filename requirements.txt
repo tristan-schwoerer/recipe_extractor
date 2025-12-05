@@ -1,0 +1,17 @@
+# Recipe Converter Dependencies
+# 
+# Install with: pip install -r requirements.txt
+
+# Core dependencies
+langextract>=0.1.0
+pydantic>=2.0.0
+beautifulsoup4>=4.12.0
+python-dotenv>=1.0.0
+requests>=2.31.0
+
+# Optional: for better HTML parsing
+lxml>=4.9.0
+
+# Optional: for bypassing Cloudflare and other bot protections
+# Install with: pip install cloudscraper
+# cloudscraper>=1.2.0
