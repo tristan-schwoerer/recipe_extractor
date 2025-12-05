@@ -1,0 +1,13 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Configurar Recipe Extractor",
+        "description": "Esta integración extrae datos estructurados de recetas desde URLs usando IA.\n\nNota: Deberás configurar tu clave API en configuration.yaml o como variable de entorno."
+      }
+    },
+    "abort": {
+      "already_configured": "Recipe Extractor ya está configurado."
+    }
+  }
+}

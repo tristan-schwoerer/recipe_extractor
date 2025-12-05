@@ -8,6 +8,7 @@ from typing import Optional
 
 import voluptuous as vol
 
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.typing import ConfigType
@@ -91,13 +92,38 @@ def _extract_recipe_sync(url: str, api_key: str, model: str) -> Optional[dict]:
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     """Set up the Recipe Extractor integration."""
+    # Support for YAML configuration (legacy)
+    if DOMAIN in config:
+        api_key = config[DOMAIN][CONF_API_KEY]
+        default_model = config[DOMAIN].get(CONF_MODEL, DEFAULT_MODEL)
+        await _setup_services(hass, api_key, default_model)
     
-    if DOMAIN not in config:
-        return False
+    return True
+
+
+async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Set up Recipe Extractor from a config entry."""
+    # For UI-based setup, use environment variable or store API key securely
+    # This is a simple implementation - you may want to add API key input in config_flow
+    api_key = entry.data.get(CONF_API_KEY, "")
+    default_model = entry.data.get(CONF_MODEL, DEFAULT_MODEL)
     
-    api_key = config[DOMAIN][CONF_API_KEY]
-    default_model = config[DOMAIN].get(CONF_MODEL, DEFAULT_MODEL)
+    await _setup_services(hass, api_key, default_model)
     
+    return True
+
+
+async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Unload a config entry."""
+    # Remove services when entry is unloaded
+    hass.services.async_remove(DOMAIN, SERVICE_EXTRACT)
+    hass.services.async_remove(DOMAIN, SERVICE_EXTRACT_TO_LIST)
+    
+    return True
+
+
+async def _setup_services(hass: HomeAssistant, api_key: str, default_model: str) -> None:
+    """Set up the integration services."""
     async def handle_extract_recipe(call: ServiceCall) -> None:
         """Handle the extract recipe service call."""
         url = call.data[DATA_URL]
@@ -214,5 +240,3 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
         handle_extract_to_list,
         schema=SERVICE_EXTRACT_TO_LIST_SCHEMA,
     )
-    
-    return True

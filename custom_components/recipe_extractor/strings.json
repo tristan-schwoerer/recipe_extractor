@@ -1,0 +1,14 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Set up Recipe Extractor",
+        "description": "This integration extracts structured recipe data from URLs using AI.\n\nNote: You'll need to configure your API key in configuration.yaml or as an environment variable.",
+        "data": {}
+      }
+    },
+    "abort": {
+      "already_configured": "Recipe Extractor is already configured."
+    }
+  }
+}
