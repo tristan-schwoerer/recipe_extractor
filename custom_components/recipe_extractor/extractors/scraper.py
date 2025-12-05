@@ -14,11 +14,7 @@ from typing import Any
 import requests
 from bs4 import BeautifulSoup
 
-from ..const import DEFAULT_TIMEOUT, DEFAULT_MAX_TEXT_LENGTH
-
-_LOGGER = logging.getLogger(__name__)
-
-from ..const import DEFAULT_TIMEOUT, DEFAULT_MAX_TEXT_LENGTH
+from ..const import DEFAULT_TIMEOUT, DEFAULT_MAX_TEXT_LENGTH, DEFAULT_MAX_RESPONSE_SIZE, DEFAULT_MAX_REDIRECTS
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -36,13 +32,44 @@ def _fetch_with_retry(session: requests.Session, url: str, max_retries: int = 3)
         
     Raises:
         requests.exceptions.RequestException: If all retries fail
+        ValueError: If response is too large or invalid content type
     """
     for attempt in range(max_retries):
         try:
             _LOGGER.debug("Fetching %s (attempt %d/%d)", url, attempt + 1, max_retries)
-            response = session.get(url, timeout=DEFAULT_TIMEOUT, allow_redirects=True)
+            # Use stream=True to check headers before downloading
+            response = session.get(
+                url, 
+                timeout=DEFAULT_TIMEOUT, 
+                allow_redirects=True,
+                max_redirects=DEFAULT_MAX_REDIRECTS,
+                stream=True
+            )
             response.raise_for_status()
-            return response.content
+            
+            # Validate Content-Type before downloading
+            content_type = response.headers.get('content-type', '').lower()
+            if not ('text/html' in content_type or 'application/xhtml' in content_type or 'application/xml' in content_type):
+                _LOGGER.warning("Invalid content type for %s: %s", url, content_type)
+                raise ValueError(f"Invalid content type: {content_type}. Only HTML/XHTML content is allowed.")
+            
+            # Check content length before downloading
+            content_length = response.headers.get('content-length')
+            if content_length:
+                content_length = int(content_length)
+                if content_length > DEFAULT_MAX_RESPONSE_SIZE:
+                    _LOGGER.warning("Response too large for %s: %d bytes", url, content_length)
+                    raise ValueError(f"Response size ({content_length} bytes) exceeds maximum allowed size ({DEFAULT_MAX_RESPONSE_SIZE} bytes)")
+            
+            # Download content with size limit enforcement
+            content = b''
+            for chunk in response.iter_content(chunk_size=8192):
+                content += chunk
+                if len(content) > DEFAULT_MAX_RESPONSE_SIZE:
+                    _LOGGER.warning("Response exceeded size limit while downloading from %s", url)
+                    raise ValueError(f"Response size exceeds maximum allowed size ({DEFAULT_MAX_RESPONSE_SIZE} bytes)")
+            
+            return content
         except requests.exceptions.HTTPError as e:
             if e.response.status_code == 403 and attempt < max_retries - 1:
                 # Wait with exponential backoff for rate limiting

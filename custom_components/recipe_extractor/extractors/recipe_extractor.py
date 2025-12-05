@@ -6,8 +6,10 @@ recipe text into structured Recipe objects.
 """
 from __future__ import annotations
 
+import ipaddress
 import logging
 from typing import Any
+from urllib.parse import urlparse
 
 import langextract as lx
 from langextract import tokenizer
@@ -181,3 +183,17 @@ class RecipeExtractor:
         except Exception as e:
             _LOGGER.error("Error during recipe extraction: %s", str(e), exc_info=True)
             raise
+
+# Validate URL scheme and prevent internal IPs
+def validate_url(url: str) -> None:
+    parsed = urlparse(url)
+    if parsed.scheme not in ('http', 'https'):
+        raise ValueError("Only HTTP/HTTPS protocols allowed")
+    
+    # Prevent SSRF to internal networks
+    try:
+        ip = ipaddress.ip_address(parsed.hostname)
+        if ip.is_private or ip.is_loopback or ip.is_link_local:
+            raise ValueError("Cannot access internal IP addresses")
+    except ValueError:
+        pass  # Hostname is not an IP
