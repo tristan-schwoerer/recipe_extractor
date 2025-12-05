@@ -42,7 +42,6 @@ def _fetch_with_retry(session: requests.Session, url: str, max_retries: int = 3)
                 url, 
                 timeout=DEFAULT_TIMEOUT, 
                 allow_redirects=True,
-                max_redirects=DEFAULT_MAX_REDIRECTS,
                 stream=True
             )
             response.raise_for_status()
@@ -128,6 +127,7 @@ def fetch_recipe_text(url: str) -> str:
                 'desktop': True
             }
         )
+        session.max_redirects = DEFAULT_MAX_REDIRECTS
     except ImportError:
         _LOGGER.debug("Using requests with custom headers for %s", url)
         # Fallback to requests with comprehensive headers
@@ -146,6 +146,7 @@ def fetch_recipe_text(url: str) -> str:
         }
         session = requests.Session()
         session.headers.update(headers)
+        session.max_redirects = DEFAULT_MAX_REDIRECTS
     
     try:
         html = _fetch_with_retry(session, url)
