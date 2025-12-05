@@ -1,4 +1,5 @@
 """Unit conversion utilities for recipe ingredients."""
+from __future__ import annotations
 
 # Volume conversions to milliliters (ml)
 VOLUME_TO_ML = {
@@ -70,16 +71,25 @@ TEMPERATURE_UNITS = {
 }
 
 
-def convert_to_metric(quantity: float, unit: str) -> tuple[float, str]:
+def convert_to_metric(quantity: float, unit: str) -> tuple[float | int, str]:
     """
     Convert imperial units to metric equivalents.
     
     Args:
         quantity: The numeric quantity
-        unit: The unit string
+        unit: The unit string (e.g., 'cups', 'oz', 'lb', '°F')
         
     Returns:
         Tuple of (converted_quantity, metric_unit)
+        If no conversion is needed, returns original values
+        
+    Examples:
+        >>> convert_to_metric(1, 'cup')
+        (240, 'ml')
+        >>> convert_to_metric(1, 'lb')
+        (454, 'g')
+        >>> convert_to_metric(350, 'f')
+        (177, '°C')
     """
     if not quantity or not unit:
         return quantity, unit
@@ -117,15 +127,23 @@ def convert_to_metric(quantity: float, unit: str) -> tuple[float, str]:
     return quantity, unit
 
 
-def format_quantity(quantity: float) -> str:
+def format_quantity(quantity: float | int | None) -> str:
     """
     Format quantity to remove unnecessary decimals.
     
     Args:
-        quantity: The numeric quantity
+        quantity: The numeric quantity (can be int, float, or None)
         
     Returns:
-        Formatted string
+        Formatted string (empty string if quantity is None)
+        
+    Examples:
+        >>> format_quantity(2.0)
+        '2'
+        >>> format_quantity(2.5)
+        '2.5'
+        >>> format_quantity(2.125)
+        '2.13'
     """
     if quantity is None:
         return ""

@@ -7,11 +7,19 @@ from typing import Any
 import voluptuous as vol
 
 from homeassistant import config_entries
-from homeassistant.core import HomeAssistant, callback
+from homeassistant.core import callback
 from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers import selector
 
-from .const import DOMAIN, AVAILABLE_MODELS, DEFAULT_MODEL, CONF_TODO_ENTITY, CONF_DEFAULT_MODEL, CONF_API_KEY_OPTION, CONF_CONVERT_UNITS
+from .const import (
+    DOMAIN,
+    AVAILABLE_MODELS,
+    DEFAULT_MODEL,
+    CONF_TODO_ENTITY,
+    CONF_DEFAULT_MODEL,
+    CONF_API_KEY,
+    CONF_CONVERT_UNITS,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -25,35 +33,43 @@ class RecipeExtractorConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
         """Handle the initial step."""
+        errors: dict[str, str] = {}
+        
         # Check if already configured
         await self.async_set_unique_id(DOMAIN)
         self._abort_if_unique_id_configured()
         
         if user_input is not None:
-            # Create the config entry with options
-            return self.async_create_entry(
-                title="Recipe Extractor",
-                data={},
-                options=user_input,
-            )
+            # Validate API key
+            api_key = user_input.get(CONF_API_KEY, "").strip()
+            if not api_key:
+                errors[CONF_API_KEY] = "api_key_required"
+            
+            # Clean up empty strings to None
+            if CONF_TODO_ENTITY in user_input:
+                if not user_input[CONF_TODO_ENTITY].strip():
+                    user_input[CONF_TODO_ENTITY] = None
+            
+            if not errors:
+                _LOGGER.info("Creating Recipe Extractor config entry")
+                # Create the config entry with options
+                return self.async_create_entry(
+                    title="Recipe Extractor",
+                    data={},
+                    options=user_input,
+                )
 
         # Show the configuration form with all options
         return self.async_show_form(
             step_id="user",
             data_schema=vol.Schema(
                 {
-                    vol.Optional(
-                        CONF_API_KEY_OPTION,
-                        default="",
-                    ): selector.TextSelector(
+                    vol.Required(CONF_API_KEY): selector.TextSelector(
                         selector.TextSelectorConfig(
                             type=selector.TextSelectorType.PASSWORD,
                         ),
                     ),
-                    vol.Optional(
-                        CONF_TODO_ENTITY,
-                        default="",
-                    ): selector.EntitySelector(
+                    vol.Optional(CONF_TODO_ENTITY): selector.EntitySelector(
                         selector.EntitySelectorConfig(
                             domain="todo",
                         ),
@@ -73,6 +89,7 @@ class RecipeExtractorConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     ): selector.BooleanSelector(),
                 }
             ),
+            errors=errors,
         )
 
     @staticmethod
@@ -95,16 +112,34 @@ class RecipeExtractorOptionsFlow(config_entries.OptionsFlow):
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
         """Manage the options."""
+        errors: dict[str, str] = {}
+        
         if user_input is not None:
-            return self.async_create_entry(title="", data=user_input)
+            # Validate API key if provided
+            api_key = user_input.get(CONF_API_KEY)
+            if api_key is not None:
+                api_key = api_key.strip()
+                if not api_key:
+                    errors[CONF_API_KEY] = "api_key_required"
+                else:
+                    user_input[CONF_API_KEY] = api_key
+            
+            # Clean up empty strings to None
+            if CONF_TODO_ENTITY in user_input:
+                if not user_input.get(CONF_TODO_ENTITY, "").strip():
+                    user_input[CONF_TODO_ENTITY] = None
+            
+            if not errors:
+                _LOGGER.info("Updating Recipe Extractor options")
+                return self.async_create_entry(title="", data=user_input)
 
         return self.async_show_form(
             step_id="init",
             data_schema=vol.Schema(
                 {
                     vol.Optional(
-                        CONF_API_KEY_OPTION,
-                        default=self.config_entry.options.get(CONF_API_KEY_OPTION, ""),
+                        CONF_API_KEY,
+                        default=self.config_entry.options.get(CONF_API_KEY, ""),
                     ): selector.TextSelector(
                         selector.TextSelectorConfig(
                             type=selector.TextSelectorType.PASSWORD,
@@ -133,4 +168,5 @@ class RecipeExtractorOptionsFlow(config_entries.OptionsFlow):
                     ): selector.BooleanSelector(),
                 }
             ),
+            errors=errors,
         )

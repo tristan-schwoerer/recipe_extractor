@@ -3,9 +3,23 @@
     "step": {
       "user": {
         "title": "Set up Recipe Extractor",
-        "description": "This integration extracts structured recipe data from URLs using AI.\n\nNote: You'll need to configure your API key in configuration.yaml or as an environment variable.",
-        "data": {}
+        "description": "This integration extracts structured recipe data from URLs using AI.",
+        "data": {
+          "api_key": "Google Gemini API Key",
+          "default_todo_entity": "Default Todo List Entity",
+          "default_model": "Default AI Model",
+          "convert_to_metric": "Convert to Metric Units"
+        },
+        "data_description": {
+          "api_key": "Your Google Gemini API key. Get one at https://makersuite.google.com/app/apikey",
+          "default_todo_entity": "Optional: Select a default todo list entity for the extract_to_list service",
+          "default_model": "Select the AI model to use for recipe extraction",
+          "convert_to_metric": "Automatically convert imperial units to metric when adding ingredients to lists"
+        }
       }
+    },
+    "error": {
+      "api_key_required": "API key is required"
     },
     "abort": {
       "already_configured": "Recipe Extractor is already configured."

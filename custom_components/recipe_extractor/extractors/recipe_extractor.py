@@ -4,9 +4,10 @@ Recipe extraction engine using Google's LangExtract.
 This module handles the core extraction logic, converting unstructured
 recipe text into structured Recipe objects.
 """
-import json
-import re
-from typing import Optional
+from __future__ import annotations
+
+import logging
+from typing import Any
 
 import langextract as lx
 from langextract import tokenizer
@@ -15,23 +16,29 @@ from ..models.recipe import Recipe, Ingredient
 from .prompts import EXTRACTION_PROMPT
 from .examples import RECIPE_EXAMPLES
 
+_LOGGER = logging.getLogger(__name__)
+
 
 class RecipeExtractor:
     """Extracts structured recipe data from unstructured text using LangExtract."""
     
-    def __init__(self, api_key: str, model: str = "gemini-2.5-pro"):
+    def __init__(self, api_key: str, model: str = "gemini-2.5-pro") -> None:
         """Initialize the recipe extractor.
         
         Args:
             api_key: API key for the language model
             model: The model to use for extraction
         """
+        if not api_key or not api_key.strip():
+            raise ValueError("API key cannot be empty")
+        
         self.api_key = api_key
         self.model = model
         # Use UnicodeTokenizer for multi-language support (fixes alignment warnings)
         self.tokenizer = tokenizer.UnicodeTokenizer()
+        _LOGGER.debug("Initialized RecipeExtractor with model %s", model)
     
-    def _parse_ingredient_groups(self, text: str) -> dict:
+    def _parse_ingredient_groups(self, text: str) -> dict[str, str]:
         """Parse ingredient group structure from formatted text.
         
         This only works with specially formatted text (from site-specific scrapers)
@@ -44,8 +51,10 @@ class RecipeExtractor:
         Returns:
             Dict mapping ingredient names to their group names, or empty dict if no structured format detected
         """
-        if '\nIngredients:\n' not in text:
+        if not text or '\nIngredients:\n' not in text:
             return {}
+        
+        _LOGGER.debug("Parsing ingredient groups from structured text")
         
         ingredient_to_group = {}
         current_group = None
@@ -78,7 +87,7 @@ class RecipeExtractor:
         
         return ingredient_to_group
     
-    def extract_recipe(self, text: str) -> Optional[Recipe]:
+    def extract_recipe(self, text: str) -> Recipe | None:
         """Extract recipe information from text.
         
         Args:
@@ -87,12 +96,18 @@ class RecipeExtractor:
         Returns:
             A Recipe object with extracted information, or None if extraction fails
         """
-        if len(text.strip()) < 100:
+        if not text or len(text.strip()) < 100:
+            _LOGGER.warning("Text too short for extraction: %d characters", len(text) if text else 0)
             return None
         
+        _LOGGER.info("Extracting recipe from %d characters of text", len(text))
         ingredient_groups = self._parse_ingredient_groups(text)
         
+        if ingredient_groups:
+            _LOGGER.debug("Found %d ingredient groups", len(set(ingredient_groups.values())))
+        
         try:
+            _LOGGER.debug("Calling LangExtract with model %s", self.model)
             result = lx.extract(
                 text_or_documents=text,
                 prompt_description=EXTRACTION_PROMPT,
@@ -146,15 +161,23 @@ class RecipeExtractor:
                 
                 # Create recipe if we have title and ingredients
                 if title and ingredients:
+                    _LOGGER.info("Successfully extracted recipe '%s' with %d ingredients", title, len(ingredients))
                     recipe = Recipe(
                         title=title,
                         ingredients=ingredients
                     )
                     return recipe
                 
+                if not title:
+                    _LOGGER.warning("Extraction completed but no title found")
+                if not ingredients:
+                    _LOGGER.warning("Extraction completed but no ingredients found")
+                
                 return None
             
+            _LOGGER.warning("No extractions found in LangExtract result")
             return None
             
         except Exception as e:
-            return None
+            _LOGGER.error("Error during recipe extraction: %s", str(e), exc_info=True)
+            raise

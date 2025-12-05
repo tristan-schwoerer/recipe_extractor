@@ -4,11 +4,69 @@ Web scraper utilities for fetching recipe text from various websites.
 This module handles fetching and cleaning recipe text from URLs,
 with specialized scrapers for sites with poor HTML structure.
 """
+from __future__ import annotations
+
 import json
+import logging
 import time
+from typing import Any
 
 import requests
 from bs4 import BeautifulSoup
+
+from ..const import DEFAULT_TIMEOUT, DEFAULT_MAX_TEXT_LENGTH
+
+_LOGGER = logging.getLogger(__name__)
+
+from ..const import DEFAULT_TIMEOUT, DEFAULT_MAX_TEXT_LENGTH
+
+_LOGGER = logging.getLogger(__name__)
+
+
+def _fetch_with_retry(session: requests.Session, url: str, max_retries: int = 3) -> bytes:
+    """Fetch URL with exponential backoff retry logic.
+    
+    Args:
+        session: Requests session to use
+        url: URL to fetch
+        max_retries: Maximum number of retry attempts
+        
+    Returns:
+        Response content as bytes
+        
+    Raises:
+        requests.exceptions.RequestException: If all retries fail
+    """
+    for attempt in range(max_retries):
+        try:
+            _LOGGER.debug("Fetching %s (attempt %d/%d)", url, attempt + 1, max_retries)
+            response = session.get(url, timeout=DEFAULT_TIMEOUT, allow_redirects=True)
+            response.raise_for_status()
+            return response.content
+        except requests.exceptions.HTTPError as e:
+            if e.response.status_code == 403 and attempt < max_retries - 1:
+                # Wait with exponential backoff for rate limiting
+                wait_time = 2 ** attempt
+                _LOGGER.warning("Got 403 for %s, retrying after %ds", url, wait_time)
+                time.sleep(wait_time)
+                continue
+            raise
+        except requests.exceptions.Timeout as e:
+            if attempt < max_retries - 1:
+                wait_time = 2 ** attempt
+                _LOGGER.warning("Timeout fetching %s, retrying after %ds", url, wait_time)
+                time.sleep(wait_time)
+                continue
+            raise
+        except requests.exceptions.RequestException as e:
+            if attempt < max_retries - 1:
+                wait_time = 2 ** attempt
+                _LOGGER.warning("Error fetching %s: %s, retrying after %ds", url, e, wait_time)
+                time.sleep(wait_time)
+                continue
+            raise
+    
+    raise requests.exceptions.RequestException(f"Failed to fetch {url} after {max_retries} attempts")
 
 
 def fetch_recipe_text(url: str) -> str:
@@ -22,11 +80,20 @@ def fetch_recipe_text(url: str) -> str:
         
     Returns:
         Cleaned recipe text
+        
+    Raises:
+        requests.exceptions.RequestException: If fetching fails
+        ValueError: If URL is invalid or content is insufficient
     """
+    if not url or not url.strip():
+        raise ValueError("URL cannot be empty")
+    
+    _LOGGER.info("Fetching recipe from %s", url)
     
     # Try to use cloudscraper if available
     try:
         import cloudscraper
+        _LOGGER.debug("Using cloudscraper for %s", url)
         session = cloudscraper.create_scraper(
             browser={
                 'browser': 'chrome',
@@ -35,6 +102,7 @@ def fetch_recipe_text(url: str) -> str:
             }
         )
     except ImportError:
+        _LOGGER.debug("Using requests with custom headers for %s", url)
         # Fallback to requests with comprehensive headers
         headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
@@ -53,25 +121,17 @@ def fetch_recipe_text(url: str) -> str:
         session.headers.update(headers)
     
     try:
-        response = session.get(url, timeout=30, allow_redirects=True)
-        response.raise_for_status()
-        html = response.content
-    except requests.exceptions.HTTPError as e:
-        if e.response.status_code == 403:
-            time.sleep(2)
-            try:
-                response = session.get(url, timeout=30, allow_redirects=True)
-                response.raise_for_status()
-                html = response.content
-            except Exception as retry_error:
-                raise
-        else:
-            raise
+        html = _fetch_with_retry(session, url)
+        _LOGGER.debug("Successfully fetched %d bytes from %s", len(html), url)
+    except requests.exceptions.RequestException as e:
+        _LOGGER.error("Failed to fetch %s: %s", url, str(e))
+        raise
     
     soup = BeautifulSoup(html, features="html.parser")
     
     # Helper function to check if an item is a Recipe
-    def is_recipe(item):
+    def is_recipe(item: Any) -> bool:
+        """Check if a JSON-LD item represents a Recipe."""
         if not isinstance(item, dict):
             return False
         item_type = item.get('@type')
@@ -85,8 +145,13 @@ def fetch_recipe_text(url: str) -> str:
     json_lds = soup.find_all('script', type='application/ld+json')
     data = None
     
-    for json_ld in json_lds:
+    _LOGGER.debug("Found %d JSON-LD scripts in %s", len(json_lds), url)
+    
+    for idx, json_ld in enumerate(json_lds):
         try:
+            if not json_ld.string:
+                continue
+                
             parsed_data = json.loads(json_ld.string)
             
             if isinstance(parsed_data, list):
@@ -100,9 +165,11 @@ def fetch_recipe_text(url: str) -> str:
                     data = parsed_data
             
             if data:
+                _LOGGER.debug("Found recipe data in JSON-LD script %d", idx)
                 break
                 
-        except (json.JSONDecodeError, KeyError, TypeError) as e:
+        except (json.JSONDecodeError, KeyError, TypeError, AttributeError) as e:
+            _LOGGER.debug("Failed to parse JSON-LD script %d: %s", idx, e)
             continue
     
     # If we found recipe data in JSON-LD, extract it
@@ -165,8 +232,12 @@ def fetch_recipe_text(url: str) -> str:
     chunks = (phrase.strip() for line in lines for phrase in line.split("  "))
     text = '\n'.join(chunk for chunk in chunks if chunk)
     
-    # Limit text length since otherwise we trigger the rate limiter of the free gemini models
-    if len(text) > 8000:
-        text = text[:8000]
+    original_length = len(text)
     
+    # Limit text length to avoid rate limits and improve extraction quality
+    if len(text) > DEFAULT_MAX_TEXT_LENGTH:
+        _LOGGER.debug("Truncating text from %d to %d characters", original_length, DEFAULT_MAX_TEXT_LENGTH)
+        text = text[:DEFAULT_MAX_TEXT_LENGTH]
+    
+    _LOGGER.info("Extracted %d characters of text from %s", len(text), url)
     return text

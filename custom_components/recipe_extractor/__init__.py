@@ -3,22 +3,28 @@ Recipe Extractor Integration for Home Assistant.
 
 This integration provides a service to extract structured recipe data from recipe websites using AI-powered extraction.
 """
+from __future__ import annotations
+
 import asyncio
-from typing import Optional
+import logging
+from typing import Any
 
 import voluptuous as vol
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, ServiceCall
+from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.typing import ConfigType
 
 from .unit_converter import convert_to_metric, format_quantity
-
 from .const import (
     DOMAIN,
     CONF_API_KEY,
     CONF_MODEL,
+    CONF_TODO_ENTITY,
+    CONF_DEFAULT_MODEL,
+    CONF_CONVERT_UNITS,
     DEFAULT_MODEL,
     SERVICE_EXTRACT,
     SERVICE_EXTRACT_TO_LIST,
@@ -33,24 +39,16 @@ from .const import (
 from .extractors.recipe_extractor import RecipeExtractor
 from .extractors.scraper import fetch_recipe_text
 
-# Configuration schema
-CONFIG_SCHEMA = vol.Schema(
-    {
-        DOMAIN: vol.Schema(
-            {
-                vol.Required(CONF_API_KEY): cv.string,
-                vol.Optional(CONF_MODEL, default=DEFAULT_MODEL): cv.string,
-            }
-        )
-    },
-    extra=vol.ALLOW_EXTRA,
-)
+_LOGGER = logging.getLogger(__name__)
+
+# Config flow only - no YAML support
+CONFIG_SCHEMA = cv.empty_config_schema(DOMAIN)
 
 # Service schemas
 SERVICE_EXTRACT_SCHEMA = vol.Schema(
     {
         vol.Required(DATA_URL): cv.url,
-        vol.Optional(DATA_MODEL, default=DEFAULT_MODEL): cv.string,
+        vol.Optional(DATA_MODEL): cv.string,
     }
 )
 
@@ -58,12 +56,12 @@ SERVICE_EXTRACT_TO_LIST_SCHEMA = vol.Schema(
     {
         vol.Required(DATA_URL): cv.url,
         vol.Optional(DATA_TODO_ENTITY): cv.entity_id,
-        vol.Optional(DATA_MODEL, default=DEFAULT_MODEL): cv.string,
+        vol.Optional(DATA_MODEL): cv.string,
     }
 )
 
 
-def _extract_recipe_sync(url: str, api_key: str, model: str) -> Optional[dict]:
+def _extract_recipe_sync(url: str, api_key: str, model: str) -> dict | None:
     """Synchronous recipe extraction (runs in executor).
     
     Args:
@@ -73,51 +71,76 @@ def _extract_recipe_sync(url: str, api_key: str, model: str) -> Optional[dict]:
         
     Returns:
         Dictionary with recipe data or None if extraction fails
+        
+    Raises:
+        Exception: Re-raises exceptions for proper error handling in async context
     """
+    _LOGGER.debug("Starting recipe extraction from %s using model %s", url, model)
+    
     try:
         recipe_text = fetch_recipe_text(url)
         
         if not recipe_text or len(recipe_text.strip()) < 100:
+            _LOGGER.warning("Insufficient text content from %s (length: %d)", url, len(recipe_text) if recipe_text else 0)
             return None
+        
+        _LOGGER.debug("Fetched %d characters of text from %s", len(recipe_text), url)
         
         extractor = RecipeExtractor(api_key=api_key, model=model)
         recipe = extractor.extract_recipe(recipe_text)
         
         if not recipe:
+            _LOGGER.warning("Recipe extraction returned no results for %s", url)
             return None
         
+        _LOGGER.info("Successfully extracted recipe '%s' with %d ingredients from %s", 
+                     recipe.title, len(recipe.ingredients), url)
         return recipe.model_dump()
         
     except Exception as e:
-        return None
+        _LOGGER.error("Error extracting recipe from %s: %s", url, str(e), exc_info=True)
+        raise
 
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     """Set up the Recipe Extractor integration."""
-    # Support for YAML configuration (legacy)
-    if DOMAIN in config:
-        api_key = config[DOMAIN][CONF_API_KEY]
-        default_model = config[DOMAIN].get(CONF_MODEL, DEFAULT_MODEL)
-        await _setup_services(hass, api_key, default_model)
-    
+    # Initialize integration data storage
+    hass.data.setdefault(DOMAIN, {})
+    _LOGGER.debug("Recipe Extractor integration setup complete")
     return True
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Recipe Extractor from a config entry."""
-    # Priority: options > entry data > YAML config
-    api_key = entry.options.get("api_key", entry.data.get(CONF_API_KEY, ""))
-    default_model = entry.options.get("default_model", entry.data.get(CONF_MODEL, DEFAULT_MODEL))
+    _LOGGER.info("Setting up Recipe Extractor config entry")
     
-    # If no API key in options/entry, try to get from YAML config
-    if not api_key and DOMAIN in hass.data.get("configuration", {}):
-        api_key = hass.data["configuration"].get(DOMAIN, {}).get(CONF_API_KEY, "")
+    # Get configuration from options (preferred) or data
+    api_key = entry.options.get(CONF_API_KEY) or entry.data.get(CONF_API_KEY, "")
+    default_model = entry.options.get(CONF_DEFAULT_MODEL) or entry.data.get(CONF_MODEL, DEFAULT_MODEL)
+    default_todo_entity = entry.options.get(CONF_TODO_ENTITY)
+    convert_units = entry.options.get(CONF_CONVERT_UNITS, True)
     
-    await _setup_services(hass, api_key, default_model, entry)
+    if not api_key:
+        _LOGGER.error("No API key configured for Recipe Extractor")
+        raise HomeAssistantError("Recipe Extractor requires an API key")
+    
+    # Store entry configuration in hass.data
+    hass.data[DOMAIN][entry.entry_id] = {
+        "api_key": api_key,
+        "default_model": default_model,
+        "default_todo_entity": default_todo_entity,
+        "convert_units": convert_units,
+    }
+    
+    # Set up services only once (for the first entry)
+    if len(hass.data[DOMAIN]) == 1:
+        await _setup_services(hass)
+        _LOGGER.info("Recipe Extractor services registered")
     
     # Listen for options updates
     entry.async_on_unload(entry.add_update_listener(async_reload_entry))
     
+    _LOGGER.debug("Recipe Extractor config entry setup complete")
     return True
 
 
@@ -128,37 +151,108 @@ async def async_reload_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
-    # Remove services when entry is unloaded
-    hass.services.async_remove(DOMAIN, SERVICE_EXTRACT)
-    hass.services.async_remove(DOMAIN, SERVICE_EXTRACT_TO_LIST)
+    _LOGGER.info("Unloading Recipe Extractor config entry")
+    
+    # Remove entry data
+    hass.data[DOMAIN].pop(entry.entry_id, None)
+    
+    # Remove services only if this is the last entry
+    if not hass.data[DOMAIN]:
+        hass.services.async_remove(DOMAIN, SERVICE_EXTRACT)
+        hass.services.async_remove(DOMAIN, SERVICE_EXTRACT_TO_LIST)
+        _LOGGER.info("Recipe Extractor services unregistered")
     
     return True
 
 
-async def _setup_services(hass: HomeAssistant, api_key: str, default_model: str, entry: ConfigEntry = None) -> None:
+def _get_entry_config(hass: HomeAssistant) -> dict[str, Any] | None:
+    """Get configuration from the first available config entry.
+    
+    Returns:
+        Configuration dict or None if no entries exist
+    """
+    if not hass.data.get(DOMAIN):
+        return None
+    
+    # Get first entry's config (services are shared across all entries)
+    entry_id = next(iter(hass.data[DOMAIN]))
+    return hass.data[DOMAIN][entry_id]
+
+
+def _format_ingredients_for_todo(ingredients: list[dict[str, Any]], convert_units: bool) -> list[str]:
+    """Format ingredients as strings for todo list.
+    
+    Args:
+        ingredients: List of ingredient dicts with name, quantity, unit
+        convert_units: Whether to convert imperial units to metric
+        
+    Returns:
+        List of formatted ingredient strings
+    """
+    todo_items = []
+    
+    for ingredient in ingredients:
+        parts = []
+        quantity = ingredient.get('quantity')
+        unit = ingredient.get('unit')
+        name = ingredient.get('name')
+        
+        # Skip invalid values
+        if not name or name in ('null', 'None'):
+            continue
+        
+        # Clean null-like values
+        if quantity in ('null', 'None', None):
+            quantity = None
+        if unit in ('null', 'None', None):
+            unit = None
+        
+        # Convert units if enabled
+        if convert_units and quantity is not None and unit:
+            try:
+                quantity, unit = convert_to_metric(float(quantity), unit)
+            except (ValueError, TypeError) as e:
+                _LOGGER.debug("Failed to convert units for %s: %s", name, e)
+                # Keep original if conversion fails
+        
+        # Build ingredient string
+        if quantity is not None:
+            formatted_qty = format_quantity(quantity)
+            if formatted_qty:
+                parts.append(formatted_qty)
+        
+        if unit:
+            parts.append(str(unit))
+        
+        parts.append(str(name))
+        
+        todo_items.append(' '.join(parts))
+    
+    return todo_items
+
+
+async def _setup_services(hass: HomeAssistant) -> None:
     """Set up the integration services."""
     
-    def _get_current_api_key() -> str:
-        """Get the current API key, checking options first."""
-        if entry:
-            return entry.options.get("api_key", api_key) or api_key
-        return api_key
-    
-    def _get_current_model() -> str:
-        """Get the current model, checking options first."""
-        if entry:
-            return entry.options.get("default_model", default_model) or default_model
-        return default_model
     async def handle_extract_recipe(call: ServiceCall) -> None:
         """Handle the extract recipe service call."""
         url = call.data[DATA_URL]
-        model = call.data.get(DATA_MODEL, _get_current_model())
-        current_api_key = _get_current_api_key()
+        
+        # Get configuration
+        config = _get_entry_config(hass)
+        if not config:
+            _LOGGER.error("No configuration found for Recipe Extractor")
+            raise ServiceValidationError("Recipe Extractor is not configured")
+        
+        model = call.data.get(DATA_MODEL, config["default_model"])
+        api_key = config["api_key"]
+        
+        _LOGGER.info("Extracting recipe from %s using model %s", url, model)
         
         try:
             # Run extraction in executor (blocking I/O)
             recipe_data = await hass.async_add_executor_job(
-                _extract_recipe_sync, url, current_api_key, model
+                _extract_recipe_sync, url, api_key, model
             )
             
             if recipe_data:
@@ -169,17 +263,21 @@ async def _setup_services(hass: HomeAssistant, api_key: str, default_model: str,
                         DATA_RECIPE: recipe_data,
                     }
                 )
+                _LOGGER.info("Recipe extraction successful for %s", url)
             else:
+                error_msg = "Failed to extract recipe from URL - insufficient content or extraction returned no results"
+                _LOGGER.warning("%s: %s", error_msg, url)
                 hass.bus.async_fire(
                     EVENT_EXTRACTION_FAILED,
                     {
                         DATA_URL: url,
-                        DATA_ERROR: "Failed to extract recipe from URL",
+                        DATA_ERROR: error_msg,
                     }
                 )
                 
         except Exception as e:
             error_msg = f"Error extracting recipe: {str(e)}"
+            _LOGGER.error("Recipe extraction failed for %s: %s", url, error_msg, exc_info=True)
             hass.bus.async_fire(
                 EVENT_EXTRACTION_FAILED,
                 {
@@ -193,12 +291,19 @@ async def _setup_services(hass: HomeAssistant, api_key: str, default_model: str,
         url = call.data[DATA_URL]
         todo_entity = call.data.get(DATA_TODO_ENTITY)
         
-        # If no todo entity provided, try to get from options
-        if not todo_entity and entry:
-            todo_entity = entry.options.get("default_todo_entity")
+        # Get configuration
+        config = _get_entry_config(hass)
+        if not config:
+            _LOGGER.error("No configuration found for Recipe Extractor")
+            raise ServiceValidationError("Recipe Extractor is not configured")
+        
+        # If no todo entity provided, use default from config
+        if not todo_entity:
+            todo_entity = config["default_todo_entity"]
         
         if not todo_entity:
             error_msg = "No todo entity specified and no default configured"
+            _LOGGER.error(error_msg)
             hass.bus.async_fire(
                 EVENT_EXTRACTION_FAILED,
                 {
@@ -206,58 +311,30 @@ async def _setup_services(hass: HomeAssistant, api_key: str, default_model: str,
                     DATA_ERROR: error_msg,
                 }
             )
-            return
+            raise ServiceValidationError(error_msg)
         
-        model = call.data.get(DATA_MODEL, _get_current_model())
-        current_api_key = _get_current_api_key()
+        model = call.data.get(DATA_MODEL, config["default_model"])
+        api_key = config["api_key"]
+        convert_units = config.get("convert_units", True)
+        
+        _LOGGER.info("Extracting recipe from %s to add to %s using model %s", url, todo_entity, model)
         
         try:
             # Run extraction in executor (blocking I/O)
             recipe_data = await hass.async_add_executor_job(
-                _extract_recipe_sync, url, current_api_key, model
+                _extract_recipe_sync, url, api_key, model
             )
             
             if recipe_data:
-                # Check if unit conversion is enabled
-                convert_units = entry.options.get("convert_to_metric", True) if entry else True
-                
-                # Prepare all ingredients first
-                todo_items = []
-                for ingredient in recipe_data.get('ingredients', []):
-                    # Format ingredient text, skipping null/empty values
-                    parts = []
-                    quantity = ingredient.get('quantity')
-                    unit = ingredient.get('unit')
-                    name = ingredient.get('name')
-                    
-                    # Clean null strings
-                    if quantity == 'null' or quantity == 'None':
-                        quantity = None
-                    if unit == 'null' or unit == 'None':
-                        unit = None
-                    if name == 'null' or name == 'None':
-                        name = None
-                    
-                    # Convert units if enabled
-                    if convert_units and quantity is not None and unit:
-                        try:
-                            quantity, unit = convert_to_metric(float(quantity), unit)
-                        except (ValueError, TypeError):
-                            pass  # Keep original if conversion fails
-                    
-                    # Add parts only if they have actual values
-                    if quantity is not None and str(quantity).strip() and str(quantity) != '':
-                        parts.append(format_quantity(quantity))
-                    if unit is not None and str(unit).strip() and str(unit) != '':
-                        parts.append(str(unit))
-                    if name is not None and str(name).strip() and str(name) != '':
-                        parts.append(str(name))
-                    
-                    if parts:  # Only add if there's content
-                        todo_items.append(' '.join(parts))
+                # Prepare all ingredients
+                todo_items = _format_ingredients_for_todo(
+                    recipe_data.get('ingredients', []),
+                    convert_units
+                )
                 
                 # Add all ingredients concurrently for better performance
                 if todo_items:
+                    _LOGGER.debug("Adding %d ingredients to %s", len(todo_items), todo_entity)
                     tasks = [
                         hass.services.async_call(
                             'todo',
@@ -271,6 +348,7 @@ async def _setup_services(hass: HomeAssistant, api_key: str, default_model: str,
                         for item_text in todo_items
                     ]
                     await asyncio.gather(*tasks)
+                    _LOGGER.info("Successfully added %d ingredients to %s", len(todo_items), todo_entity)
                 
                 # Fire success event
                 hass.bus.async_fire(
@@ -282,16 +360,19 @@ async def _setup_services(hass: HomeAssistant, api_key: str, default_model: str,
                     }
                 )
             else:
+                error_msg = "Failed to extract recipe from URL - insufficient content or extraction returned no results"
+                _LOGGER.warning("%s: %s", error_msg, url)
                 hass.bus.async_fire(
                     EVENT_EXTRACTION_FAILED,
                     {
                         DATA_URL: url,
-                        DATA_ERROR: "Failed to extract recipe from URL",
+                        DATA_ERROR: error_msg,
                     }
                 )
                 
         except Exception as e:
             error_msg = f"Error extracting recipe: {str(e)}"
+            _LOGGER.error("Recipe extraction to list failed for %s: %s", url, error_msg, exc_info=True)
             hass.bus.async_fire(
                 EVENT_EXTRACTION_FAILED,
                 {
