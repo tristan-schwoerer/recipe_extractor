@@ -13,6 +13,8 @@ from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.typing import ConfigType
 
+from .unit_converter import convert_to_metric, format_quantity
+
 from .const import (
     DOMAIN,
     CONF_API_KEY,
@@ -216,6 +218,9 @@ async def _setup_services(hass: HomeAssistant, api_key: str, default_model: str,
             )
             
             if recipe_data:
+                # Check if unit conversion is enabled
+                convert_units = entry.options.get("convert_to_metric", True) if entry else True
+                
                 # Add ingredients to the todo list
                 for ingredient in recipe_data.get('ingredients', []):
                     # Format ingredient text, skipping null/empty values
@@ -224,8 +229,15 @@ async def _setup_services(hass: HomeAssistant, api_key: str, default_model: str,
                     unit = ingredient.get('unit')
                     name = ingredient.get('name')
                     
+                    # Convert units if enabled
+                    if convert_units and quantity is not None and unit:
+                        try:
+                            quantity, unit = convert_to_metric(float(quantity), unit)
+                        except (ValueError, TypeError):
+                            pass  # Keep original if conversion fails
+                    
                     if quantity is not None and quantity != '':
-                        parts.append(str(quantity))
+                        parts.append(format_quantity(quantity))
                     if unit is not None and unit != '':
                         parts.append(unit)
                     if name is not None and name != '':
