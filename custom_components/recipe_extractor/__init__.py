@@ -55,7 +55,7 @@ SERVICE_EXTRACT_SCHEMA = vol.Schema(
 SERVICE_EXTRACT_TO_LIST_SCHEMA = vol.Schema(
     {
         vol.Required(DATA_URL): cv.url,
-        vol.Required(DATA_TODO_ENTITY): cv.entity_id,
+        vol.Optional(DATA_TODO_ENTITY): cv.entity_id,
         vol.Optional(DATA_MODEL, default=DEFAULT_MODEL): cv.string,
     }
 )
