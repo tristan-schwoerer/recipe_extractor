@@ -11,6 +11,7 @@ DEFAULT_MODEL = "gemini-2.5-flash-lite"
 
 # Service names
 SERVICE_EXTRACT = "extract"
+SERVICE_EXTRACT_TO_LIST = "extract_to_list"
 
 # Event names
 EVENT_RECIPE_EXTRACTED = "recipe_extractor_recipe_extracted"
@@ -21,3 +22,4 @@ DATA_URL = "url"
 DATA_MODEL = "model"
 DATA_RECIPE = "recipe"
 DATA_ERROR = "error"
+DATA_TODO_ENTITY = "todo_entity"

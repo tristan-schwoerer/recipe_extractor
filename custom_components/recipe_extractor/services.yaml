@@ -17,3 +17,31 @@ extract:
       example: "gemini-2.5-pro"
       selector:
         text:
+
+extract_to_list:
+  name: Extract Recipe to Shopping List
+  description: Extract recipe ingredients and add them directly to a todo list entity
+  fields:
+    url:
+      name: URL
+      description: The URL of the recipe website to extract
+      required: true
+      example: "https://www.chefkoch.de/rezepte/187591080204663/Gewuerzkuchen-auf-m-Blech.html"
+      selector:
+        text:
+    todo_entity:
+      name: Todo List Entity
+      description: The entity ID of the todo list to add ingredients to (e.g., todo.google_keep_shopping)
+      required: true
+      example: "todo.google_keep_shopping"
+      selector:
+        entity:
+          domain: todo
+    model:
+      name: Model
+      description: AI model to use for extraction (default is gemini-2.5-flash-lite)
+      required: false
+      default: "gemini-2.5-flash-lite"
+      example: "gemini-2.5-pro"
+      selector:
+        text:
