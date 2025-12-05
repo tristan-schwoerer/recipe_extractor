@@ -93,9 +93,6 @@ def convert_to_metric(quantity: float, unit: str) -> tuple[float, str]:
         # Use liters for large volumes
         if ml >= 1000:
             return round(ml / 1000, 2), "l"
-        # Use deciliters for medium volumes
-        elif ml >= 100:
-            return round(ml / 100, 1), "dl"
         else:
             return round(ml, 0), "ml"
     
