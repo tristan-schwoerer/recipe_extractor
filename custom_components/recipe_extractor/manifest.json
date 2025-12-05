@@ -1,0 +1,17 @@
+{
+  "domain": "recipe_extractor",
+  "name": "Recipe Extractor",
+  "documentation": "https://github.com/tristan-schwoerer/recipe_extractor",
+  "requirements": [
+    "langextract>=0.1.0",
+    "pydantic>=2.0.0",
+    "beautifulsoup4>=4.12.0",
+    "requests>=2.31.0",
+    "lxml>=4.9.0"
+  ],
+  "codeowners": ["@yourusername"],
+  "dependencies": [],
+  "config_flow": false,
+  "version": "1.0.0",
+  "iot_class": "cloud_polling"
+}

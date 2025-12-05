@@ -63,7 +63,6 @@ coverage.xml
 # Output files
 output/
 *.html
-*.json
 debug_*.txt
 
 # Logs
