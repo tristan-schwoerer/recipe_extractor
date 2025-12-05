@@ -23,3 +23,6 @@ DATA_MODEL = "model"
 DATA_RECIPE = "recipe"
 DATA_ERROR = "error"
 DATA_TODO_ENTITY = "todo_entity"
+
+# Options keys
+CONF_TODO_ENTITY = "default_todo_entity"

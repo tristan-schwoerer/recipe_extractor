@@ -10,5 +10,19 @@
     "abort": {
       "already_configured": "Recipe Extractor is already configured."
     }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Recipe Extractor Options",
+        "description": "Configure default settings for the Recipe Extractor integration.",
+        "data": {
+          "default_todo_entity": "Default Todo List Entity"
+        },
+        "data_description": {
+          "default_todo_entity": "Select the todo list entity to use by default for the extract_to_list service. You can still override this when calling the service."
+        }
+      }
+    }
   }
 }
