@@ -2,6 +2,7 @@
   "domain": "recipe_extractor",
   "name": "Recipe Extractor",
   "documentation": "https://github.com/tristan-schwoerer/recipe_extractor",
+  "issue_tracker": "https://github.com/tristan-schwoerer/recipe_extractor/issues",
   "requirements": [
     "langextract>=0.1.0",
     "pydantic>=2.0.0",
