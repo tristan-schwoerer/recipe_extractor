@@ -1,1 +1,92 @@
+# Environment variables
 *.env
+.env
+.env.local
+.env.*.local
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+.venv/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+*.sublime-project
+*.sublime-workspace
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+coverage.xml
+*.cover
+.hypothesis/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# Output files
+output/
+*.html
+*.json
+debug_*.txt
+
+# Logs
+*.log
+logs/
+
+# Home Assistant specific
+home-assistant.log
+home-assistant_v2.db
+.storage/
+deps/
+tts/
+.uuid
+.cloud/
+.google.token
+
+# API keys and secrets
+secrets.yaml
+known_devices.yaml
+
+# Temporary files
+*.tmp
+*.bak
+*.backup
+tmp/
+temp/
