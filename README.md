@@ -82,11 +82,6 @@ recipe_extractor:
 - `convert_units` (boolean, optional): Automatically convert units to metric/imperial based on your Home Assistant settings. Default: `true`
 - `todo_entity` (string, optional): Entity ID of a todo list to add ingredients to. Example: `todo.shopping_list`
 
-### Getting a Google API Key
-
-1. Go to [Google AI Studio](https://makersuite.google.com/app/apikey)
-2. Create a new API key (free tier available)
-3. Copy the key and add it to your `configuration.yaml`
 
 ### Available Models
 In my testing I could use pretty much any gemini model with the free tier. This may not always be the case though 
