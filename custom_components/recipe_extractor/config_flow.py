@@ -11,7 +11,7 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers import selector
 
-from .const import DOMAIN, AVAILABLE_MODELS, DEFAULT_MODEL, CONF_TODO_ENTITY, CONF_DEFAULT_MODEL
+from .const import DOMAIN, AVAILABLE_MODELS, DEFAULT_MODEL, CONF_TODO_ENTITY, CONF_DEFAULT_MODEL, CONF_API_KEY_OPTION
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -69,6 +69,14 @@ class RecipeExtractorOptionsFlow(config_entries.OptionsFlow):
             step_id="init",
             data_schema=vol.Schema(
                 {
+                    vol.Optional(
+                        CONF_API_KEY_OPTION,
+                        default=self.config_entry.options.get(CONF_API_KEY_OPTION, ""),
+                    ): selector.TextSelector(
+                        selector.TextSelectorConfig(
+                            type=selector.TextSelectorType.PASSWORD,
+                        ),
+                    ),
                     vol.Optional(
                         CONF_TODO_ENTITY,
                         default=self.config_entry.options.get(CONF_TODO_ENTITY, ""),

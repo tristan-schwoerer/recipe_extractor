@@ -33,3 +33,4 @@ DATA_TODO_ENTITY = "todo_entity"
 # Options keys
 CONF_TODO_ENTITY = "default_todo_entity"
 CONF_DEFAULT_MODEL = "default_model"
+CONF_API_KEY_OPTION = "api_key"

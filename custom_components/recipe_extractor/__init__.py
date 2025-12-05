@@ -103,14 +103,25 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Recipe Extractor from a config entry."""
-    # For UI-based setup, use environment variable or store API key securely
-    # This is a simple implementation - you may want to add API key input in config_flow
-    api_key = entry.data.get(CONF_API_KEY, "")
-    default_model = entry.data.get(CONF_MODEL, DEFAULT_MODEL)
+    # Priority: options > entry data > YAML config
+    api_key = entry.options.get("api_key", entry.data.get(CONF_API_KEY, ""))
+    default_model = entry.options.get("default_model", entry.data.get(CONF_MODEL, DEFAULT_MODEL))
     
-    await _setup_services(hass, api_key, default_model)
+    # If no API key in options/entry, try to get from YAML config
+    if not api_key and DOMAIN in hass.data.get("configuration", {}):
+        api_key = hass.data["configuration"].get(DOMAIN, {}).get(CONF_API_KEY, "")
+    
+    await _setup_services(hass, api_key, default_model, entry)
+    
+    # Listen for options updates
+    entry.async_on_unload(entry.add_update_listener(async_reload_entry))
     
     return True
+
+
+async def async_reload_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Reload the config entry when options change."""
+    await hass.config_entries.async_reload(entry.entry_id)
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
@@ -122,17 +133,30 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     return True
 
 
-async def _setup_services(hass: HomeAssistant, api_key: str, default_model: str) -> None:
+async def _setup_services(hass: HomeAssistant, api_key: str, default_model: str, entry: ConfigEntry = None) -> None:
     """Set up the integration services."""
+    
+    def _get_current_api_key() -> str:
+        """Get the current API key, checking options first."""
+        if entry:
+            return entry.options.get("api_key", api_key) or api_key
+        return api_key
+    
+    def _get_current_model() -> str:
+        """Get the current model, checking options first."""
+        if entry:
+            return entry.options.get("default_model", default_model) or default_model
+        return default_model
     async def handle_extract_recipe(call: ServiceCall) -> None:
         """Handle the extract recipe service call."""
         url = call.data[DATA_URL]
-        model = call.data.get(DATA_MODEL, default_model)
+        model = call.data.get(DATA_MODEL, _get_current_model())
+        current_api_key = _get_current_api_key()
         
         try:
             # Run extraction in executor (blocking I/O)
             recipe_data = await hass.async_add_executor_job(
-                _extract_recipe_sync, url, api_key, model
+                _extract_recipe_sync, url, current_api_key, model
             )
             
             if recipe_data:
@@ -165,13 +189,30 @@ async def _setup_services(hass: HomeAssistant, api_key: str, default_model: str)
     async def handle_extract_to_list(call: ServiceCall) -> None:
         """Handle the extract to list service call."""
         url = call.data[DATA_URL]
-        todo_entity = call.data[DATA_TODO_ENTITY]
-        model = call.data.get(DATA_MODEL, default_model)
+        todo_entity = call.data.get(DATA_TODO_ENTITY)
+        
+        # If no todo entity provided, try to get from options
+        if not todo_entity and entry:
+            todo_entity = entry.options.get("default_todo_entity")
+        
+        if not todo_entity:
+            error_msg = "No todo entity specified and no default configured"
+            hass.bus.async_fire(
+                EVENT_EXTRACTION_FAILED,
+                {
+                    DATA_URL: url,
+                    DATA_ERROR: error_msg,
+                }
+            )
+            return
+        
+        model = call.data.get(DATA_MODEL, _get_current_model())
+        current_api_key = _get_current_api_key()
         
         try:
             # Run extraction in executor (blocking I/O)
             recipe_data = await hass.async_add_executor_job(
-                _extract_recipe_sync, url, api_key, model
+                _extract_recipe_sync, url, current_api_key, model
             )
             
             if recipe_data:
