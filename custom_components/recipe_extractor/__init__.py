@@ -221,7 +221,8 @@ async def _setup_services(hass: HomeAssistant, api_key: str, default_model: str,
                 # Check if unit conversion is enabled
                 convert_units = entry.options.get("convert_to_metric", True) if entry else True
                 
-                # Add ingredients to the todo list
+                # Prepare all ingredients first
+                todo_items = []
                 for ingredient in recipe_data.get('ingredients', []):
                     # Format ingredient text, skipping null/empty values
                     parts = []
@@ -252,18 +253,24 @@ async def _setup_services(hass: HomeAssistant, api_key: str, default_model: str,
                     if name is not None and str(name).strip() and str(name) != '':
                         parts.append(str(name))
                     
-                    item_text = ' '.join(parts)
-                    
-                    # Call the todo.add_item service
-                    await hass.services.async_call(
-                        'todo',
-                        'add_item',
-                        {
-                            'entity_id': todo_entity,
-                            'item': item_text,
-                        },
-                        blocking=True,
-                    )
+                    if parts:  # Only add if there's content
+                        todo_items.append(' '.join(parts))
+                
+                # Add all ingredients concurrently for better performance
+                if todo_items:
+                    tasks = [
+                        hass.services.async_call(
+                            'todo',
+                            'add_item',
+                            {
+                                'entity_id': todo_entity,
+                                'item': item_text,
+                            },
+                            blocking=False,
+                        )
+                        for item_text in todo_items
+                    ]
+                    await asyncio.gather(*tasks)
                 
                 # Fire success event
                 hass.bus.async_fire(
