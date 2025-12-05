@@ -1,1 +1,0 @@
-"""Recipe converter using LangExtract."""
