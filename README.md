@@ -1,6 +1,15 @@
-# Recipe Extractor - Home Assistant Integration
+[![hacs_badge](https://img.shields.io/badge/HACS-Custom-41BDF5.svg?style=for-the-badge)](https://github.com/hacs/integration)
+[![GitHub issues](https://img.shields.io/github/issues/tristan-schwoerer/recipe_extractor?style=for-the-badge)](https://github.com/tristan-schwoerer/recipe_extractor/issues)
+[![Version](https://img.shields.io/github/v/release/tristan-schwoerer/recipe_extractor?style=for-the-badge)](https://github.com/tristan-schwoerer/recipe_extractor/releases)
+
+# Recipe Extractor
 
 A Home Assistant custom integration that extracts structured recipe data (ingredients with quantities and units) from recipe websites using AI-powered extraction via Google's LangExtract library.
+
+### Requirements
+
+- Minimum required Home Assistant version: `2023.1`
+- Google Gemini API key ([Get one here](https://makersuite.google.com/app/apikey))
 
 ## Features
 
@@ -13,7 +22,19 @@ A Home Assistant custom integration that extracts structured recipe data (ingred
 
 ## Installation
 
-### Method 1: Manual Installation
+### HACS (Recommended)
+
+1. Open HACS in Home Assistant
+2. Click on "Integrations"
+3. Click the three dots in the top right corner
+4. Select "Custom repositories"
+5. Add this repository URL: `https://github.com/tristan-schwoerer/recipe_extractor`
+6. Select category: "Integration"
+7. Click "Add"
+8. Search for "Recipe Extractor" and install it
+9. Restart Home Assistant
+
+### Manual Installation
 
 1. Copy the `custom_components/recipe_extractor` folder to your Home Assistant `config/custom_components/` directory:
 
@@ -25,16 +46,16 @@ cp -r /path/to/custom_components/recipe_extractor custom_components/
 
 2. Restart Home Assistant
 
-### Method 2: HACS (when available)
+## Setup
 
-1. Open HACS in Home Assistant
-2. Click on "Integrations"
-3. Click the three dots in the top right
-4. Select "Custom repositories"
-5. Add this repository URL
-6. Install "Recipe Extractor"
+### Step 1: Add Integration via UI
 
-## Configuration
+1. Go to **Settings** → **Devices & Services**
+2. Click **+ ADD INTEGRATION**
+3. Search for **"Recipe Extractor"**
+4. Click to add it and follow the setup dialog
+
+### Step 2: Configure API Key
 
 Add the following to your `configuration.yaml`:
 
@@ -44,11 +65,15 @@ recipe_extractor:
   model: "gemini-2.5-flash-lite"  # Optional, this is the default
 ```
 
+### Step 3: Restart Home Assistant
+
+Restart Home Assistant to load the configuration.
+
 ### Getting a Google API Key
 
 1. Go to [Google AI Studio](https://makersuite.google.com/app/apikey)
-2. Create a new API key
-3. Copy the key and add it to your configuration
+2. Create a new API key (free tier available)
+3. Copy the key and add it to your `configuration.yaml`
 
 ### Available Models
 
@@ -307,20 +332,31 @@ The integration automatically installs these Python packages:
 - `requests>=2.31.0` - HTTP requests
 - `lxml>=4.9.0` - Fast XML/HTML processing
 
-## License
+## Contributing
 
-This integration is provided as-is. Use at your own discretion.
+Contributions are welcome! Please check out the [issues](https://github.com/tristan-schwoerer/recipe_extractor/issues) page or submit a pull request.
+
+If you have:
+- 🐛 Found a bug → [Open an issue](https://github.com/tristan-schwoerer/recipe_extractor/issues/new)
+- 💡 Feature suggestion → [Start a discussion](https://github.com/tristan-schwoerer/recipe_extractor/discussions)
+- 🌐 A new site-specific scraper → [Submit a PR](https://github.com/tristan-schwoerer/recipe_extractor/pulls)
+
+## Support
+
+For questions and support:
+- 📖 Check the documentation above
+- 🐛 [Report bugs](https://github.com/tristan-schwoerer/recipe_extractor/issues)
+- 💬 [Ask questions](https://github.com/tristan-schwoerer/recipe_extractor/discussions)
+- 📝 Check the Home Assistant logs for error messages
+- 🔍 Enable debug logging for detailed information
 
 ## Credits
 
 Built with:
-- [LangExtract](https://github.com/yourusername/langextract) - AI extraction library
+- [LangExtract](https://github.com/google/langextract) - AI extraction library
 - [Home Assistant](https://www.home-assistant.io/) - Home automation platform
 - [Google Gemini](https://ai.google.dev/) - AI models
 
-## Support
+## License
 
-For issues, feature requests, or questions:
-- Open an issue on GitHub
-- Check the Home Assistant logs for error messages
-- Enable debug logging for detailed information
+This integration is provided as-is under the MIT License.
