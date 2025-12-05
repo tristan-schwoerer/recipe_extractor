@@ -8,17 +8,8 @@ A Home Assistant custom integration that extracts structured recipe data (ingred
 
 ### Requirements
 
-- Minimum required Home Assistant version: `2023.1`
+- Tested with Home Assistant version: `2025.11.2`
 - Google Gemini API key ([Get one here](https://makersuite.google.com/app/apikey))
-
-## Features
-
-- 🥘 **Extract Structured Recipe Data**: Automatically extracts ingredients with quantities, units, and groups from recipe URLs
-- 🌍 **Multi-Language Support**: Works with recipes in English, German, Danish, and more
-- 🎯 **Site-Specific Scrapers**: Optimized scrapers for sites with poor HTML structure
-- 🤖 **AI-Powered**: Uses Google's Gemini models for intelligent ingredient parsing
-- 🔔 **Event-Driven**: Fires Home Assistant events when recipes are extracted
-- 🔧 **Service Integration**: Easily callable from automations and scripts
 
 ## Installation
 
@@ -48,26 +39,48 @@ cp -r /path/to/custom_components/recipe_extractor custom_components/
 
 ## Setup
 
-### Step 1: Add Integration via UI
+### Add Integration via UI
 
 1. Go to **Settings** → **Devices & Services**
 2. Click **+ ADD INTEGRATION**
 3. Search for **"Recipe Extractor"**
-4. Click to add it and follow the setup dialog
+4. Click to add it and configure in the setup dialog:
+   - **API Key** (Required): Your Google Gemini API key
+   - **Todo Entity** (Optional): Select a todo list to add ingredients to
+   - **Model**: Choose the AI model (default: gemini-2.5-flash-lite)
+   - **Convert Units**: Enable/disable automatic unit conversion (default: enabled)
+5. Click **Submit** to complete the setup
 
-### Step 2: Configure API Key
+You can reconfigure these options anytime by clicking **Configure** on the integration card.
 
-Add the following to your `configuration.yaml`:
+### Alternative: Configure via configuration.yaml
+
+You can also configure the integration via `configuration.yaml`. An API key must be configured either through the UI or in configuration.yaml. Note that UI configuration takes precedence over YAML configuration.
+
+**Step 1:** Add your API key to `secrets.yaml`:
 
 ```yaml
-recipe_extractor:
-  api_key: "your_google_api_key_here"
-  model: "gemini-2.5-flash-lite"  # Optional, this is the default
+# secrets.yaml
+gemini_api_key: "your_google_api_key_here"
 ```
 
-### Step 3: Restart Home Assistant
+**Step 2:** Reference the secret in `configuration.yaml`:
 
-Restart Home Assistant to load the configuration.
+```yaml
+# configuration.yaml
+recipe_extractor:
+  api_key: !secret gemini_api_key
+  model: "gemini-2.5-flash-lite"  # Optional: default AI model to use
+  convert_units: true  # Optional: enable automatic unit conversion (default: true)
+  todo_entity: "todo.shopping_list"  # Optional: default todo list entity for ingredients
+```
+
+**Configuration Options:**
+
+- `api_key` (string, **required**): Your Google Gemini API key. Must be configured either here or in the UI. **Best practice:** Store in `secrets.yaml` and reference with `!secret`.
+- `model` (string, optional): Default AI model. Options: `gemini-2.5-flash-lite`, `gemini-2.5-pro`, `gemini-2.0-flash-exp`. Default: `gemini-2.5-flash-lite`
+- `convert_units` (boolean, optional): Automatically convert units to metric/imperial based on your Home Assistant settings. Default: `true`
+- `todo_entity` (string, optional): Entity ID of a todo list to add ingredients to. Example: `todo.shopping_list`
 
 ### Getting a Google API Key
 
@@ -76,10 +89,9 @@ Restart Home Assistant to load the configuration.
 3. Copy the key and add it to your `configuration.yaml`
 
 ### Available Models
-
+In my testing I could use pretty much any gemini model with the free tier. This may not always be the case though 
 - `gemini-2.5-flash-lite` (default) - Fast and cost-effective
 - `gemini-2.5-pro` - More accurate but slower and more expensive
-- `gemini-2.0-flash-exp` - Experimental flash model
 
 ## Usage
 
@@ -92,9 +104,9 @@ Extract a recipe from a URL.
 | Parameter | Required | Description | Example |
 |-----------|----------|-------------|---------|
 | `url` | Yes | Recipe website URL | `https://www.chefkoch.de/rezepte/...` |
-| `model` | No | AI model to use (default: gemini-2.5-flash-lite) | `gemini-2.5-pro` |
+| `model` | No | AI model to use (uses configured default if not specified) | `gemini-2.5-pro` |
 
-**Example Service Call:**
+**Example Service Call (uses configured default model):**
 
 ```yaml
 service: recipe_extractor.extract
@@ -102,7 +114,7 @@ data:
   url: "https://www.chefkoch.de/rezepte/187591080204663/Gewuerzkuchen-auf-m-Blech.html"
 ```
 
-**Example Service Call with Custom Model:**
+**Example Service Call (override with specific model):**
 
 ```yaml
 service: recipe_extractor.extract
@@ -199,49 +211,7 @@ automation:
                 name: "{{ trigger.event.data.recipe.ingredients[repeat.index - 1].quantity }} {{ trigger.event.data.recipe.ingredients[repeat.index - 1].unit }} {{ trigger.event.data.recipe.ingredients[repeat.index - 1].name }}"
 ```
 
-### Example 3: Store Recipe in Text File
 
-```yaml
-automation:
-  - alias: "Save Recipe to File"
-    trigger:
-      - platform: event
-        event_type: recipe_extractor_recipe_extracted
-    action:
-      - service: shell_command.save_recipe
-        data:
-          title: "{{ trigger.event.data.recipe.title }}"
-          ingredients: "{{ trigger.event.data.recipe.ingredients | tojson }}"
-
-shell_command:
-  save_recipe: >
-    echo "{{ title }}" > /config/recipes/{{ title | slugify }}.txt &&
-    echo "{{ ingredients }}" >> /config/recipes/{{ title | slugify }}.txt
-```
-
-### Example 4: Use with Input Text Helper
-
-```yaml
-# configuration.yaml
-input_text:
-  recipe_url:
-    name: Recipe URL
-    max: 255
-
-# automation
-automation:
-  - alias: "Extract Recipe from Input"
-    trigger:
-      - platform: state
-        entity_id: input_text.recipe_url
-    condition:
-      - condition: template
-        value_template: "{{ trigger.to_state.state | regex_match('https?://') }}"
-    action:
-      - service: recipe_extractor.extract
-        data:
-          url: "{{ states('input_text.recipe_url') }}"
-```
 
 ## Supported Websites
 
@@ -249,47 +219,6 @@ The integration works with most recipe websites that use:
 - Schema.org Recipe structured data (JSON-LD)
 - Standard HTML recipe markup
 - Common recipe container elements
-
-### Sites with Specialized Scrapers:
-- voresmad.dk
-- More can be added by extending `extractors/scraper.py`
-
-### Examples of Tested Sites:
-- chefkoch.de
-- valdemarsro.dk
-- allrecipes.com
-- bbc.co.uk/food
-- food.com
-
-## Troubleshooting
-
-### Enable Debug Logging
-
-Add to your `configuration.yaml`:
-
-```yaml
-logger:
-  default: info
-  logs:
-    custom_components.recipe_extractor: debug
-```
-
-### Common Issues
-
-1. **"Failed to extract text from URL"**
-   - The website may be blocking automated access
-   - Try a different recipe URL
-   - Check if the site requires JavaScript rendering
-
-2. **"Failed to extract recipe structure"**
-   - The AI model couldn't parse the recipe
-   - Try using `gemini-2.5-pro` for better accuracy
-   - The webpage might not contain a proper recipe
-
-3. **Import errors after installation**
-   - Restart Home Assistant completely
-   - Check that all files are in the correct location
-   - Verify file permissions
 
 ## Development
 
@@ -308,14 +237,34 @@ def fetch_recipe_text(url: str) -> str:
 
 ### Testing
 
-You can test the extraction outside of Home Assistant:
+You can test the extraction outside of Home Assistant using the provided `test.py` script:
+
+**Step 1:** Copy `.env.example` to `.env` and add your API key:
+
+```bash
+cp .env.example .env
+# Edit .env and add your Google Gemini API key
+```
+
+**Step 2:** Run the test script:
+
+```bash
+python test.py
+```
+
+The script will extract a recipe and print the title and ingredients. You can modify the URL in `test.py` to test different recipe websites.
+
+**Manual Testing:**
 
 ```python
+import os
+from dotenv import load_dotenv
 from custom_components.recipe_extractor.extractors import RecipeExtractor, fetch_recipe_text
 
-# Fetch and extract
+load_dotenv()
+
 text = fetch_recipe_text("https://example.com/recipe")
-extractor = RecipeExtractor(api_key="your_key")
+extractor = RecipeExtractor(api_key=os.getenv("LANGEXTRACT_API_KEY"))
 recipe = extractor.extract_recipe(text)
 
 print(f"Title: {recipe.title}")
@@ -334,21 +283,7 @@ The integration automatically installs these Python packages:
 
 ## Contributing
 
-Contributions are welcome! Please check out the [issues](https://github.com/tristan-schwoerer/recipe_extractor/issues) page or submit a pull request.
-
-If you have:
-- 🐛 Found a bug → [Open an issue](https://github.com/tristan-schwoerer/recipe_extractor/issues/new)
-- 💡 Feature suggestion → [Start a discussion](https://github.com/tristan-schwoerer/recipe_extractor/discussions)
-- 🌐 A new site-specific scraper → [Submit a PR](https://github.com/tristan-schwoerer/recipe_extractor/pulls)
-
-## Support
-
-For questions and support:
-- 📖 Check the documentation above
-- 🐛 [Report bugs](https://github.com/tristan-schwoerer/recipe_extractor/issues)
-- 💬 [Ask questions](https://github.com/tristan-schwoerer/recipe_extractor/discussions)
-- 📝 Check the Home Assistant logs for error messages
-- 🔍 Enable debug logging for detailed information
+Contributions are welcome! Please check submit a pull request.
 
 ## Credits
 

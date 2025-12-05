@@ -30,16 +30,49 @@ class RecipeExtractorConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         self._abort_if_unique_id_configured()
         
         if user_input is not None:
-            # Create the config entry
+            # Create the config entry with options
             return self.async_create_entry(
                 title="Recipe Extractor",
                 data={},
+                options=user_input,
             )
 
-        # Show the configuration form
+        # Show the configuration form with all options
         return self.async_show_form(
             step_id="user",
-            data_schema=vol.Schema({}),
+            data_schema=vol.Schema(
+                {
+                    vol.Optional(
+                        CONF_API_KEY_OPTION,
+                        default="",
+                    ): selector.TextSelector(
+                        selector.TextSelectorConfig(
+                            type=selector.TextSelectorType.PASSWORD,
+                        ),
+                    ),
+                    vol.Optional(
+                        CONF_TODO_ENTITY,
+                        default="",
+                    ): selector.EntitySelector(
+                        selector.EntitySelectorConfig(
+                            domain="todo",
+                        ),
+                    ),
+                    vol.Optional(
+                        CONF_DEFAULT_MODEL,
+                        default=DEFAULT_MODEL,
+                    ): selector.SelectSelector(
+                        selector.SelectSelectorConfig(
+                            options=AVAILABLE_MODELS,
+                            mode=selector.SelectSelectorMode.DROPDOWN,
+                        ),
+                    ),
+                    vol.Optional(
+                        CONF_CONVERT_UNITS,
+                        default=True,
+                    ): selector.BooleanSelector(),
+                }
+            ),
         )
 
     @staticmethod
