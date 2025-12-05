@@ -9,7 +9,7 @@
     "requests>=2.31.0",
     "lxml>=4.9.0"
   ],
-  "codeowners": ["@yourusername"],
+  "codeowners": ["@tristan-schwoerer"],
   "dependencies": [],
   "config_flow": true,
   "version": "1.0.0",
