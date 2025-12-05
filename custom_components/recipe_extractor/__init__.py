@@ -218,13 +218,18 @@ async def _setup_services(hass: HomeAssistant, api_key: str, default_model: str,
             if recipe_data:
                 # Add ingredients to the todo list
                 for ingredient in recipe_data.get('ingredients', []):
-                    # Format ingredient text
+                    # Format ingredient text, skipping null/empty values
                     parts = []
-                    if ingredient.get('quantity'):
-                        parts.append(str(ingredient['quantity']))
-                    if ingredient.get('unit'):
-                        parts.append(ingredient['unit'])
-                    parts.append(ingredient['name'])
+                    quantity = ingredient.get('quantity')
+                    unit = ingredient.get('unit')
+                    name = ingredient.get('name')
+                    
+                    if quantity is not None and quantity != '':
+                        parts.append(str(quantity))
+                    if unit is not None and unit != '':
+                        parts.append(unit)
+                    if name is not None and name != '':
+                        parts.append(name)
                     
                     item_text = ' '.join(parts)
                     
