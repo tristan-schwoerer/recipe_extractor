@@ -229,6 +229,14 @@ async def _setup_services(hass: HomeAssistant, api_key: str, default_model: str,
                     unit = ingredient.get('unit')
                     name = ingredient.get('name')
                     
+                    # Clean null strings
+                    if quantity == 'null' or quantity == 'None':
+                        quantity = None
+                    if unit == 'null' or unit == 'None':
+                        unit = None
+                    if name == 'null' or name == 'None':
+                        name = None
+                    
                     # Convert units if enabled
                     if convert_units and quantity is not None and unit:
                         try:
@@ -236,12 +244,13 @@ async def _setup_services(hass: HomeAssistant, api_key: str, default_model: str,
                         except (ValueError, TypeError):
                             pass  # Keep original if conversion fails
                     
-                    if quantity is not None and quantity != '':
+                    # Add parts only if they have actual values
+                    if quantity is not None and str(quantity).strip() and str(quantity) != '':
                         parts.append(format_quantity(quantity))
-                    if unit is not None and unit != '':
-                        parts.append(unit)
-                    if name is not None and name != '':
-                        parts.append(name)
+                    if unit is not None and str(unit).strip() and str(unit) != '':
+                        parts.append(str(unit))
+                    if name is not None and str(name).strip() and str(name) != '':
+                        parts.append(str(name))
                     
                     item_text = ' '.join(parts)
                     
