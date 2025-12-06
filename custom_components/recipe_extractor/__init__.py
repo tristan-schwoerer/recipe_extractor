@@ -210,14 +210,19 @@ def _format_ingredients_for_todo(ingredients: list[dict[str, Any]], convert_unit
     """
     todo_items = []
 
-    for ingredient in ingredients:
+    for idx, ingredient in enumerate(ingredients):
         parts = []
         quantity = ingredient.get('quantity')
         unit = ingredient.get('unit')
         name = ingredient.get('name')
 
+        _LOGGER.debug("Formatting ingredient %d: name='%s', quantity='%s', unit='%s'",
+                      idx + 1, name, quantity, unit)
+
         # Skip invalid values
         if not name or name in ('null', 'None'):
+            _LOGGER.debug(
+                "Skipping ingredient %d: invalid or missing name", idx + 1)
             continue
 
         # Clean null-like values
@@ -229,7 +234,11 @@ def _format_ingredients_for_todo(ingredients: list[dict[str, Any]], convert_unit
         # Convert units if enabled
         if convert_units and quantity is not None and unit:
             try:
+                original_qty = quantity
+                original_unit = unit
                 quantity, unit = convert_to_metric(float(quantity), unit)
+                _LOGGER.debug("Converted units for %s: %s %s -> %s %s",
+                              name, original_qty, original_unit, quantity, unit)
             except (ValueError, TypeError) as e:
                 _LOGGER.debug("Failed to convert units for %s: %s", name, e)
                 # Keep original if conversion fails
@@ -245,7 +254,10 @@ def _format_ingredients_for_todo(ingredients: list[dict[str, Any]], convert_unit
 
         parts.append(str(name))
 
-        todo_items.append(' '.join(parts))
+        formatted_item = ' '.join(parts)
+        _LOGGER.debug("Formatted ingredient %d as: '%s'",
+                      idx + 1, formatted_item)
+        todo_items.append(formatted_item)
 
     return todo_items
 
@@ -351,11 +363,20 @@ async def _setup_services(hass: HomeAssistant) -> None:
             )
 
             if recipe_data:
+                _LOGGER.debug("Recipe data extracted: title='%s', ingredients count=%d",
+                              recipe_data.get('title'), len(recipe_data.get('ingredients', [])))
+
+                # Log the raw ingredients for debugging
+                for idx, ing in enumerate(recipe_data.get('ingredients', [])):
+                    _LOGGER.debug("Ingredient %d: %s", idx + 1, ing)
+
                 # Prepare all ingredients
                 todo_items = _format_ingredients_for_todo(
                     recipe_data.get('ingredients', []),
                     convert_units
                 )
+                _LOGGER.debug(
+                    "Formatted %d todo items from ingredients", len(todo_items))
 
                 # Add all ingredients concurrently for better performance
                 if todo_items:
@@ -369,13 +390,16 @@ async def _setup_services(hass: HomeAssistant) -> None:
                                 'entity_id': todo_entity,
                                 'item': item_text,
                             },
-                            blocking=False,
+                            blocking=True,
                         )
                         for item_text in todo_items
                     ]
                     await asyncio.gather(*tasks)
                     _LOGGER.info("Successfully added %d ingredients to %s", len(
                         todo_items), todo_entity)
+                else:
+                    _LOGGER.warning(
+                        "No ingredients to add - todo_items list is empty")
 
                 # Fire success event
                 hass.bus.async_fire(
