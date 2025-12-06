@@ -132,9 +132,11 @@ class RecipeExtractorOptionsFlow(config_entries.OptionsFlow):
         # Get current options with proper defaults
         current_api_key = self.config_entry.options.get(CONF_API_KEY, "")
         current_todo_entity = self.config_entry.options.get(CONF_TODO_ENTITY)
-        current_model = self.config_entry.options.get(CONF_DEFAULT_MODEL, DEFAULT_MODEL)
-        current_convert = self.config_entry.options.get(CONF_CONVERT_UNITS, True)
-        
+        current_model = self.config_entry.options.get(
+            CONF_DEFAULT_MODEL, DEFAULT_MODEL)
+        current_convert = self.config_entry.options.get(
+            CONF_CONVERT_UNITS, True)
+
         # Build schema with conditional defaults
         schema_dict = {
             vol.Optional(
@@ -146,7 +148,7 @@ class RecipeExtractorOptionsFlow(config_entries.OptionsFlow):
                 ),
             ),
         }
-        
+
         # Only add default for todo_entity if it has a value
         if current_todo_entity:
             schema_dict[vol.Optional(CONF_TODO_ENTITY, default=current_todo_entity)] = selector.EntitySelector(
@@ -160,7 +162,7 @@ class RecipeExtractorOptionsFlow(config_entries.OptionsFlow):
                     domain="todo",
                 ),
             )
-        
+
         schema_dict.update({
             vol.Optional(
                 CONF_DEFAULT_MODEL,
@@ -176,7 +178,7 @@ class RecipeExtractorOptionsFlow(config_entries.OptionsFlow):
                 default=current_convert,
             ): selector.BooleanSelector(),
         })
-        
+
         return self.async_show_form(
             step_id="init",
             data_schema=vol.Schema(schema_dict),
