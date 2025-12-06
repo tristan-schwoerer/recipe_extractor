@@ -12,7 +12,7 @@ CONF_CONVERT_UNITS = "convert_to_metric"
 # Default values
 DEFAULT_MODEL = "gemini-2.5-flash-lite"
 DEFAULT_TIMEOUT = 30
-DEFAULT_MAX_TEXT_LENGTH = 8000
+DEFAULT_MAX_TEXT_LENGTH = 4000  # Reduced to prevent LLM response truncation
 DEFAULT_MAX_RESPONSE_SIZE = 10 * 1024 * 1024  # 10MB limit
 DEFAULT_MAX_REDIRECTS = 3  # Maximum number of redirects to follow
 
