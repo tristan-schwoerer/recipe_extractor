@@ -61,6 +61,8 @@ SERVICE_EXTRACT_TO_LIST_SCHEMA = vol.Schema(
         vol.Optional(DATA_TODO_ENTITY): cv.entity_id,
         vol.Optional(DATA_MODEL): cv.string,
         vol.Optional(DATA_TARGET_SERVINGS): cv.positive_int,
+        # Allow passing pre-extracted recipe data
+        vol.Optional(DATA_RECIPE): dict,
     }
 )
 
@@ -368,6 +370,8 @@ async def _setup_services(hass: HomeAssistant) -> None:
         url = call.data[DATA_URL]
         todo_entity = call.data.get(DATA_TODO_ENTITY)
         target_servings = call.data.get(DATA_TARGET_SERVINGS)
+        # Check if recipe already provided
+        recipe_data = call.data.get(DATA_RECIPE)
 
         # Get configuration
         config = _get_entry_config(hass)
@@ -395,14 +399,18 @@ async def _setup_services(hass: HomeAssistant) -> None:
         api_key = config["api_key"]
         convert_units = config.get("convert_units", True)
 
-        _LOGGER.info(
-            "Extracting recipe from %s to add to %s using model %s", url, todo_entity, model)
-
         try:
-            # Run extraction in executor (blocking I/O)
-            recipe_data = await hass.async_add_executor_job(
-                _extract_recipe_sync, url, api_key, model
-            )
+            # Only extract if recipe data not already provided
+            if not recipe_data:
+                _LOGGER.info(
+                    "Extracting recipe from %s to add to %s using model %s", url, todo_entity, model)
+                # Run extraction in executor (blocking I/O)
+                recipe_data = await hass.async_add_executor_job(
+                    _extract_recipe_sync, url, api_key, model
+                )
+            else:
+                _LOGGER.info(
+                    "Using pre-extracted recipe data for %s, adding to %s", url, todo_entity)
 
             if recipe_data:
                 _LOGGER.debug("Recipe data extracted: title='%s', servings=%s, ingredients count=%d",
