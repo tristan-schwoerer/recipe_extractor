@@ -28,7 +28,8 @@ CRITICAL RULES:
 - If the recipe is in German, keep ingredient names in German (e.g., "Mehl", "Zucker", "Eier")
 - Annotations like "gehäuft" (heaped), "eingelegt" (pickled), "gerieben" (grated), "lauwarm" (lukewarm) should be part of the ingredient NAME, not the unit
 - The unit field should contain ONLY standard measurement units  
-- Extract EVERY ingredient from the ingredient list, even if they don't have a quantity or unit
+- Extract EVERY ingredient from the ingredient list section ONLY
+- ONLY extract ingredients from the "Ingredients:" section - DO NOT extract from instructions, descriptions, or other text
 - For ingredients without quantity/unit, set both to null
 - Keep the full specific ingredient name as written in the recipe
 - Extract each ingredient ONLY ONCE - do not create duplicate entries or translated versions
