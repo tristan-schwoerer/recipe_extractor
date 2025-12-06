@@ -148,29 +148,30 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
         # Register the www directory as a static path
         www_path = os.path.join(os.path.dirname(__file__), "www")
-
-        # Verify the path exists
+        card_js = os.path.join(www_path, "recipe-extractor-card.js")
+        
+        # Verify the files exist
         if not os.path.exists(www_path):
             _LOGGER.error("www directory not found at %s", www_path)
+        elif not os.path.exists(card_js):
+            _LOGGER.error("Card JS file not found at %s", card_js)
         else:
             _LOGGER.info("www directory found at %s", www_path)
-
-        # Register static path using the async method
-        await hass.http.async_register_static_paths([
-            {
-                "url_path": f"/{DOMAIN}",
-                "path": www_path,
-            }
-        ])
-
-        _LOGGER.info(
-            "Recipe Extractor card registered at /%s/recipe-extractor-card.js", DOMAIN
-        )
-        _LOGGER.info(
-            "Add this URL as a Lovelace resource: Settings -> Dashboards -> Resources"
+            _LOGGER.info("Card JS file found at %s", card_js)
+        
+        # Register using the local file URL pattern
+        hass.http.register_static_path(
+            f"/local/community/{DOMAIN}/recipe-extractor-card.js",
+            card_js,
+            cache_headers=False
         )
 
-    # Listen for options updates
+        _LOGGER.info(
+            "Recipe Extractor card registered at /local/community/%s/recipe-extractor-card.js", DOMAIN
+        )
+        _LOGGER.info(
+            "Add this URL as a Lovelace resource in Settings -> Dashboards -> Resources"
+        )    # Listen for options updates
     entry.async_on_unload(entry.add_update_listener(async_reload_entry))
 
     _LOGGER.debug("Recipe Extractor config entry setup complete")

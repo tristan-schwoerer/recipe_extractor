@@ -98,7 +98,7 @@ The integration includes a custom card that provides a simple UI to extract reci
 
 1. Go to **Settings** → **Dashboards** → **Resources** (three dots menu in top right)
 2. Click **"+ ADD RESOURCE"**
-3. Enter the URL: `/recipe_extractor/recipe-extractor-card.js`
+3. Enter the URL: `/local/community/recipe_extractor/recipe-extractor-card.js`
 4. Select Resource type: **JavaScript Module**
 5. Click **"CREATE"**
 6. **Refresh your browser** (Ctrl+F5 or Cmd+Shift+R)
