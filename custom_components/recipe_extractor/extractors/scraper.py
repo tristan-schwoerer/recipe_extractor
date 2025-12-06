@@ -221,6 +221,15 @@ def fetch_recipe_text(url: str) -> str:
         # We only need title, servings, and ingredients for proper extraction.
 
         text = '\n'.join(parts)
+
+        # Apply truncation even for JSON-LD data (in case of extremely long ingredient lists)
+        if len(text) > DEFAULT_MAX_TEXT_LENGTH:
+            _LOGGER.warning("JSON-LD recipe data too large (%d chars), truncating to %d",
+                            len(text), DEFAULT_MAX_TEXT_LENGTH)
+            text = text[:DEFAULT_MAX_TEXT_LENGTH]
+
+        _LOGGER.info(
+            "Extracted %d characters from JSON-LD recipe data", len(text))
         return text
 
     # Fallback: Look for common recipe container elements
