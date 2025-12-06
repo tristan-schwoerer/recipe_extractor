@@ -205,6 +205,13 @@ def fetch_recipe_text(url: str) -> str:
         parts = []
         if data.get('name'):
             parts.append(f"Recipe: {data['name']}")
+        if data.get('recipeYield'):
+            # Extract servings/yield information
+            recipe_yield = data['recipeYield']
+            if isinstance(recipe_yield, list):
+                recipe_yield = recipe_yield[0] if recipe_yield else None
+            if recipe_yield:
+                parts.append(f"\nServings: {recipe_yield}")
         if data.get('recipeIngredient'):
             parts.append("\nIngredients:")
             for ingredient in data['recipeIngredient']:

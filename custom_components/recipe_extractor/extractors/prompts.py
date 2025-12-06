@@ -7,7 +7,12 @@ Extract recipe information from the provided text in any language (English, Germ
 
 Identify and extract:
 1. The recipe title
-2. The number of servings/portions (if specified)
+2. The number of servings/portions (if specified) - IMPORTANT: Look for patterns like:
+   - "Servings: 4", "Serves: 4", "Yield: 4"
+   - "Portionen: 4", "Für 4 Portionen", "4 Portionen"
+   - "4 persons", "For 4 people"
+   - "Makes 12 cookies", "Ergibt 8 Stücke"
+   - Extract ONLY the number (e.g., extract "4" from "Für 4 Portionen")
 3. ALL ingredients with their quantities and units
 
 For each ingredient, break it down into:

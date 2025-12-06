@@ -90,6 +90,69 @@ Ingredients:
 
     ExampleData(
         text="""
+Tomatensuppe
+
+Zutaten
+
+Für 4 Portionen
+
+500 g Tomaten
+200 ml Sahne
+1 Zwiebel(n)
+2 EL Olivenöl
+Salz und Pfeffer
+Basilikum
+""",
+        extractions=[
+            Extraction(
+                extraction_class="title",
+                extraction_text="Tomatensuppe"
+            ),
+            Extraction(
+                extraction_class="servings",
+                extraction_text="4"
+            ),
+            Extraction(
+                extraction_class="ingredient",
+                extraction_text="500 g Tomaten",
+                attributes={
+                    "name": "Tomaten", "quantity": "500.0", "unit": "g", "group": None}
+            ),
+            Extraction(
+                extraction_class="ingredient",
+                extraction_text="200 ml Sahne",
+                attributes={"name": "Sahne", "quantity": "200.0",
+                            "unit": "ml", "group": None}
+            ),
+            Extraction(
+                extraction_class="ingredient",
+                extraction_text="1 Zwiebel(n)",
+                attributes={
+                    "name": "Zwiebel(n)", "quantity": "1.0", "unit": None, "group": None}
+            ),
+            Extraction(
+                extraction_class="ingredient",
+                extraction_text="2 EL Olivenöl",
+                attributes={"name": "Olivenöl",
+                            "quantity": "2.0", "unit": "EL", "group": None}
+            ),
+            Extraction(
+                extraction_class="ingredient",
+                extraction_text="Salz und Pfeffer",
+                attributes={"name": "Salz und Pfeffer",
+                            "quantity": None, "unit": None, "group": None}
+            ),
+            Extraction(
+                extraction_class="ingredient",
+                extraction_text="Basilikum",
+                attributes={"name": "Basilikum",
+                            "quantity": None, "unit": None, "group": None}
+            )
+        ]
+    ),
+
+    ExampleData(
+        text="""
 Gewürzkuchen
 
 Portionen: 8
