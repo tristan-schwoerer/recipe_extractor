@@ -149,7 +149,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         # Register the www directory as a static path
         www_path = os.path.join(os.path.dirname(__file__), "www")
         card_js = os.path.join(www_path, "recipe-extractor-card.js")
-        
+
         # Verify the files exist
         if not os.path.exists(www_path):
             _LOGGER.error("www directory not found at %s", www_path)
@@ -158,7 +158,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         else:
             _LOGGER.info("www directory found at %s", www_path)
             _LOGGER.info("Card JS file found at %s", card_js)
-        
+
         # Register using the local file URL pattern
         hass.http.register_static_path(
             f"/local/community/{DOMAIN}/recipe-extractor-card.js",
