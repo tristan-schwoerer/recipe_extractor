@@ -6,7 +6,7 @@ from custom_components.recipe_extractor.extractors import RecipeExtractor, fetch
 load_dotenv()
 
 # Fetch and extract a random recipe
-text = fetch_recipe_text("https://www.madbanditten.dk/vikingegryde/")
+text = fetch_recipe_text("https://www.valdemarsro.dk/julefrikadeller/")
 extractor = RecipeExtractor(api_key=os.getenv("LANGEXTRACT_API_KEY"))
 recipe = extractor.extract_recipe(text)
 
