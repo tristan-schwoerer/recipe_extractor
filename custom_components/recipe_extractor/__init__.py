@@ -146,17 +146,18 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         await _setup_services(hass)
         _LOGGER.info("Recipe Extractor services registered")
 
-        # Register the www directory as a static path using hacsfiles convention
+        # Register the www directory as a static path
         www_path = os.path.join(os.path.dirname(__file__), "www")
-        await hass.http.async_register_static_paths([
-            {
-                "url_path": f"/hacsfiles/{DOMAIN}",
-                "path": www_path,
-            }
-        ])
+        
+        # Use a unique path for this integration
+        hass.http.register_static_path(
+            f"/{DOMAIN}",
+            www_path,
+            cache_headers=True
+        )
 
         _LOGGER.info(
-            "Recipe Extractor card available at /hacsfiles/%s/recipe-extractor-card.js", DOMAIN
+            "Recipe Extractor card available at /%s/recipe-extractor-card.js", DOMAIN
         )
         _LOGGER.info(
             "Add this URL as a Lovelace resource: Settings -> Dashboards -> Resources"
