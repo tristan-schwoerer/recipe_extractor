@@ -16,6 +16,7 @@ from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.typing import ConfigType
+from homeassistant.components.frontend import add_extra_js_url
 
 from .unit_converter import convert_to_metric, format_quantity
 from .const import (
@@ -136,6 +137,18 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     if len(hass.data[DOMAIN]) == 1:
         await _setup_services(hass)
         _LOGGER.info("Recipe Extractor services registered")
+        
+        # Register frontend resources
+        await hass.http.async_register_static_paths(
+            [
+                {
+                    "path": f"/recipe_extractor/recipe-extractor-card.js",
+                    "file_path": f"{hass.config.path('custom_components/recipe_extractor/www/recipe-extractor-card.js')}",
+                }
+            ]
+        )
+        add_extra_js_url(hass, "/recipe_extractor/recipe-extractor-card.js")
+        _LOGGER.info("Recipe Extractor frontend resources registered")
     
     # Listen for options updates
     entry.async_on_unload(entry.add_update_listener(async_reload_entry))

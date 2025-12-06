@@ -90,6 +90,39 @@ In my testing I could use pretty much any gemini model with the free tier. This 
 
 ## Usage
 
+### Custom Lovelace Card
+
+The integration includes a custom card that provides a simple UI to extract recipes directly from your dashboard.
+
+**Card Configuration:**
+
+Add the card to your Lovelace dashboard with the following configuration:
+
+```yaml
+type: custom:recipe-extractor-card
+entity: todo.shopping_list  # Required: Your todo list entity
+title: Recipe Extractor  # Optional: Card title (default: "Recipe Extractor")
+button_text: Extract to List  # Optional: Button text (default: "Extract to List")
+placeholder: Enter recipe URL...  # Optional: Input placeholder (default: "Enter recipe URL...")
+```
+
+**Visual Configuration:**
+
+You can also add the card through the Lovelace UI:
+1. Edit your dashboard
+2. Click "+ ADD CARD"
+3. Search for "Recipe Extractor Card"
+4. Configure the card options in the visual editor
+5. Click "Save"
+
+**Features:**
+- Clean, simple input field for recipe URLs
+- One-click extraction button
+- Real-time status messages (success, error, loading)
+- Automatic validation of URLs
+- Press Enter in the input field to trigger extraction
+- Respects Home Assistant theme colors
+
 ### Service: `recipe_extractor.extract`
 
 Extract a recipe from a URL.
