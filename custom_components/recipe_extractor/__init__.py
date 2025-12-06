@@ -149,15 +149,22 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         # Register the www directory as a static path
         www_path = os.path.join(os.path.dirname(__file__), "www")
 
-        # Use a unique path for this integration
-        hass.http.register_static_path(
-            f"/{DOMAIN}",
-            www_path,
-            cache_headers=True
-        )
+        # Verify the path exists
+        if not os.path.exists(www_path):
+            _LOGGER.error("www directory not found at %s", www_path)
+        else:
+            _LOGGER.info("www directory found at %s", www_path)
+
+        # Register static path using the async method
+        await hass.http.async_register_static_paths([
+            {
+                "url_path": f"/{DOMAIN}",
+                "path": www_path,
+            }
+        ])
 
         _LOGGER.info(
-            "Recipe Extractor card available at /%s/recipe-extractor-card.js", DOMAIN
+            "Recipe Extractor card registered at /%s/recipe-extractor-card.js", DOMAIN
         )
         _LOGGER.info(
             "Add this URL as a Lovelace resource: Settings -> Dashboards -> Resources"
