@@ -154,7 +154,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 "path": www_path,
             }
         ])
-        
+
         _LOGGER.info(
             "Recipe Extractor card available at /recipe_extractor_local/recipe-extractor-card.js"
         )
