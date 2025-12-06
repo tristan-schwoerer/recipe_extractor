@@ -120,7 +120,9 @@ class RecipeExtractor:
                 model_id=self.model,
                 examples=RECIPE_EXAMPLES,
                 tokenizer=self.tokenizer,  # Use UnicodeTokenizer for multi-language support
-                api_key=self.api_key
+                api_key=self.api_key,
+                # Limit LLM response size to prevent truncation
+                generation_config={"max_output_tokens": 8192}
             )
 
             if result and hasattr(result, 'extractions') and result.extractions:
