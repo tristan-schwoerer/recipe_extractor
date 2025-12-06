@@ -288,9 +288,17 @@ class RecipeExtractorCardEditor extends HTMLElement {
   }
 }
 
-customElements.define('recipe-extractor-card', RecipeExtractorCard);
-customElements.define('recipe-extractor-card-editor', RecipeExtractorCardEditor);
+// Register the custom elements
+if (!customElements.get('recipe-extractor-card')) {
+  customElements.define('recipe-extractor-card', RecipeExtractorCard);
+  console.info('%c RECIPE-EXTRACTOR-CARD %c Registered', 'color: white; background: green; font-weight: 700;', 'color: green; font-weight: 700;');
+}
 
+if (!customElements.get('recipe-extractor-card-editor')) {
+  customElements.define('recipe-extractor-card-editor', RecipeExtractorCardEditor);
+}
+
+// Register with custom cards registry
 window.customCards = window.customCards || [];
 window.customCards.push({
   type: 'recipe-extractor-card',
@@ -299,3 +307,5 @@ window.customCards.push({
   preview: true,
   documentationURL: 'https://github.com/tristan-schwoerer/recipe_extractor',
 });
+
+console.info('Recipe Extractor Card loaded and ready');
