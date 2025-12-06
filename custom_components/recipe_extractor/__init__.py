@@ -145,16 +145,17 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         await _setup_services(hass)
         _LOGGER.info("Recipe Extractor services registered")
 
-        # Register frontend resources
+        # Register frontend resources - register the www directory
         await hass.http.async_register_static_paths([
             {
-                "url_path": "/recipe_extractor_card",
-                "path": hass.config.path("custom_components/recipe_extractor/www"),
+                "url_path": f"/{DOMAIN}",
+                "path": hass.config.path(f"custom_components/{DOMAIN}/www"),
             }
         ])
-        add_extra_js_url(
-            hass, "/recipe_extractor_card/recipe-extractor-card.js")
-        _LOGGER.info("Recipe Extractor frontend resources registered")
+        # Add the card JS as a Lovelace resource
+        add_extra_js_url(hass, f"/{DOMAIN}/recipe-extractor-card.js")
+        _LOGGER.info(
+            "Recipe Extractor frontend resources registered at /%s/recipe-extractor-card.js", DOMAIN)
 
     # Listen for options updates
     entry.async_on_unload(entry.add_update_listener(async_reload_entry))
