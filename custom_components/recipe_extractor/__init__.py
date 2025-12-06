@@ -234,7 +234,7 @@ def _format_ingredients_for_todo(ingredients: list[dict[str, Any]], convert_unit
 async def _setup_services(hass: HomeAssistant) -> None:
     """Set up the integration services."""
     
-    async def handle_extract_recipe(call: ServiceCall) -> None:
+    async def handle_extract_recipe(call: ServiceCall) -> dict[str, Any]:
         """Handle the extract recipe service call."""
         url = call.data[DATA_URL]
         
@@ -264,6 +264,8 @@ async def _setup_services(hass: HomeAssistant) -> None:
                     }
                 )
                 _LOGGER.info("Recipe extraction successful for %s", url)
+                # Return the recipe data as service response
+                return recipe_data
             else:
                 error_msg = "Failed to extract recipe from URL - insufficient content or extraction returned no results"
                 _LOGGER.warning("%s: %s", error_msg, url)
@@ -274,6 +276,7 @@ async def _setup_services(hass: HomeAssistant) -> None:
                         DATA_ERROR: error_msg,
                     }
                 )
+                return {"error": error_msg}
                 
         except Exception as e:
             error_msg = f"Error extracting recipe: {str(e)}"
@@ -285,8 +288,9 @@ async def _setup_services(hass: HomeAssistant) -> None:
                     DATA_ERROR: error_msg,
                 }
             )
+            return {"error": error_msg}
     
-    async def handle_extract_to_list(call: ServiceCall) -> None:
+    async def handle_extract_to_list(call: ServiceCall) -> dict[str, Any]:
         """Handle the extract to list service call."""
         url = call.data[DATA_URL]
         todo_entity = call.data.get(DATA_TODO_ENTITY)
@@ -359,6 +363,12 @@ async def _setup_services(hass: HomeAssistant) -> None:
                         DATA_TODO_ENTITY: todo_entity,
                     }
                 )
+                # Return the recipe data as service response
+                return {
+                    "recipe": recipe_data,
+                    "todo_entity": todo_entity,
+                    "items_added": len(todo_items)
+                }
             else:
                 error_msg = "Failed to extract recipe from URL - insufficient content or extraction returned no results"
                 _LOGGER.warning("%s: %s", error_msg, url)
@@ -369,6 +379,7 @@ async def _setup_services(hass: HomeAssistant) -> None:
                         DATA_ERROR: error_msg,
                     }
                 )
+                return {"error": error_msg}
                 
         except Exception as e:
             error_msg = f"Error extracting recipe: {str(e)}"
@@ -380,13 +391,15 @@ async def _setup_services(hass: HomeAssistant) -> None:
                     DATA_ERROR: error_msg,
                 }
             )
+            return {"error": error_msg}
     
-    # Register the services
+    # Register the services with supports_response
     hass.services.async_register(
         DOMAIN,
         SERVICE_EXTRACT,
         handle_extract_recipe,
         schema=SERVICE_EXTRACT_SCHEMA,
+        supports_response=True,
     )
     
     hass.services.async_register(
@@ -394,4 +407,5 @@ async def _setup_services(hass: HomeAssistant) -> None:
         SERVICE_EXTRACT_TO_LIST,
         handle_extract_to_list,
         schema=SERVICE_EXTRACT_TO_LIST_SCHEMA,
+        supports_response=True,
     )

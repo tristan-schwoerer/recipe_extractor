@@ -1,6 +1,7 @@
 extract:
   name: Extract Recipe
   description: Extract structured recipe ingredients from a website URL
+  response: optional
   fields:
     url:
       name: URL
@@ -21,6 +22,7 @@ extract:
 extract_to_list:
   name: Extract Recipe to Shopping List
   description: Extract recipe ingredients and add them directly to a todo list entity
+  response: optional
   fields:
     url:
       name: URL
