@@ -34,22 +34,22 @@ class RecipeExtractorConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     ) -> FlowResult:
         """Handle the initial step."""
         errors: dict[str, str] = {}
-        
+
         # Check if already configured
         await self.async_set_unique_id(DOMAIN)
         self._abort_if_unique_id_configured()
-        
+
         if user_input is not None:
             # Validate API key
             api_key = user_input.get(CONF_API_KEY, "").strip()
             if not api_key:
                 errors[CONF_API_KEY] = "api_key_required"
-            
+
             # Clean up empty strings to None
             if CONF_TODO_ENTITY in user_input:
                 if not user_input[CONF_TODO_ENTITY].strip():
                     user_input[CONF_TODO_ENTITY] = None
-            
+
             if not errors:
                 _LOGGER.info("Creating Recipe Extractor config entry")
                 # Create the config entry with options
@@ -104,16 +104,12 @@ class RecipeExtractorConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 class RecipeExtractorOptionsFlow(config_entries.OptionsFlow):
     """Handle options flow for Recipe Extractor."""
 
-    def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
-        """Initialize options flow."""
-        self.config_entry = config_entry
-
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
         """Manage the options."""
         errors: dict[str, str] = {}
-        
+
         if user_input is not None:
             # Validate API key if provided
             api_key = user_input.get(CONF_API_KEY)
@@ -123,12 +119,12 @@ class RecipeExtractorOptionsFlow(config_entries.OptionsFlow):
                     errors[CONF_API_KEY] = "api_key_required"
                 else:
                     user_input[CONF_API_KEY] = api_key
-            
+
             # Clean up empty strings to None
             if CONF_TODO_ENTITY in user_input:
                 if not user_input.get(CONF_TODO_ENTITY, "").strip():
                     user_input[CONF_TODO_ENTITY] = None
-            
+
             if not errors:
                 _LOGGER.info("Updating Recipe Extractor options")
                 return self.async_create_entry(title="", data=user_input)
@@ -139,7 +135,8 @@ class RecipeExtractorOptionsFlow(config_entries.OptionsFlow):
                 {
                     vol.Optional(
                         CONF_API_KEY,
-                        default=self.config_entry.options.get(CONF_API_KEY, ""),
+                        default=self.config_entry.options.get(
+                            CONF_API_KEY, ""),
                     ): selector.TextSelector(
                         selector.TextSelectorConfig(
                             type=selector.TextSelectorType.PASSWORD,
@@ -147,7 +144,8 @@ class RecipeExtractorOptionsFlow(config_entries.OptionsFlow):
                     ),
                     vol.Optional(
                         CONF_TODO_ENTITY,
-                        default=self.config_entry.options.get(CONF_TODO_ENTITY, ""),
+                        default=self.config_entry.options.get(
+                            CONF_TODO_ENTITY, ""),
                     ): selector.EntitySelector(
                         selector.EntitySelectorConfig(
                             domain="todo",
@@ -155,7 +153,8 @@ class RecipeExtractorOptionsFlow(config_entries.OptionsFlow):
                     ),
                     vol.Optional(
                         CONF_DEFAULT_MODEL,
-                        default=self.config_entry.options.get(CONF_DEFAULT_MODEL, DEFAULT_MODEL),
+                        default=self.config_entry.options.get(
+                            CONF_DEFAULT_MODEL, DEFAULT_MODEL),
                     ): selector.SelectSelector(
                         selector.SelectSelectorConfig(
                             options=AVAILABLE_MODELS,
@@ -164,7 +163,8 @@ class RecipeExtractorOptionsFlow(config_entries.OptionsFlow):
                     ),
                     vol.Optional(
                         CONF_CONVERT_UNITS,
-                        default=self.config_entry.options.get(CONF_CONVERT_UNITS, True),
+                        default=self.config_entry.options.get(
+                            CONF_CONVERT_UNITS, True),
                     ): selector.BooleanSelector(),
                 }
             ),
