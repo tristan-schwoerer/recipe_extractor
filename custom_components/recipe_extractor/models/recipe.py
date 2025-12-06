@@ -11,14 +11,14 @@ from pydantic import BaseModel, Field
 
 class Ingredient(BaseModel):
     """A structured representation of a single ingredient.
-    
+
     Attributes:
         name: The name of the ingredient (e.g., 'all-purpose flour', 'Mehl')
         quantity: Optional numeric quantity (e.g., 2.5, 250)
         unit: Optional unit of measurement (e.g., 'cups', 'g', 'TL')
         group: Optional ingredient group/section (e.g., 'For the dough')
     """
-    
+
     name: str = Field(
         description="The name of the ingredient, e.g., 'all-purpose flour'"
     )
@@ -38,14 +38,19 @@ class Ingredient(BaseModel):
 
 class Recipe(BaseModel):
     """The top-level schema for the entire recipe.
-    
+
     Attributes:
         title: The recipe title/name
+        servings: Optional number of servings/portions the recipe yields
         ingredients: List of structured ingredients with quantities and units
     """
-    
+
     title: str = Field(
         description="The title of the recipe"
+    )
+    servings: int | None = Field(
+        default=None,
+        description="The number of servings or portions the recipe yields"
     )
     ingredients: list[Ingredient] = Field(
         description="A list of all ingredients, structured using the Ingredient model"

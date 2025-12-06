@@ -39,6 +39,16 @@ extract_to_list:
       selector:
         entity:
           domain: todo
+    target_servings:
+      name: Target Servings
+      description: Optional number of servings to scale the recipe to (requires recipe to specify original servings)
+      required: false
+      example: 6
+      selector:
+        number:
+          min: 1
+          max: 100
+          mode: box
     model:
       name: Model
       description: AI model to use for extraction (default is gemini-2.5-flash-lite)

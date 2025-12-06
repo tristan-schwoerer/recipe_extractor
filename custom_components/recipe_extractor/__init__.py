@@ -37,6 +37,7 @@ from .const import (
     DATA_RECIPE,
     DATA_ERROR,
     DATA_TODO_ENTITY,
+    DATA_TARGET_SERVINGS,
 )
 from .extractors.recipe_extractor import RecipeExtractor
 from .extractors.scraper import fetch_recipe_text
@@ -59,6 +60,7 @@ SERVICE_EXTRACT_TO_LIST_SCHEMA = vol.Schema(
         vol.Required(DATA_URL): cv.url,
         vol.Optional(DATA_TODO_ENTITY): cv.entity_id,
         vol.Optional(DATA_MODEL): cv.string,
+        vol.Optional(DATA_TARGET_SERVINGS): cv.positive_int,
     }
 )
 
@@ -198,6 +200,45 @@ def _get_entry_config(hass: HomeAssistant) -> dict[str, Any] | None:
     return hass.data[DOMAIN][entry_id]
 
 
+def _scale_ingredients(ingredients: list[dict[str, Any]], original_servings: int | None, target_servings: int) -> list[dict[str, Any]]:
+    """Scale ingredient quantities based on servings.
+
+    Args:
+        ingredients: List of ingredient dicts with name, quantity, unit
+        original_servings: Original number of servings in the recipe
+        target_servings: Target number of servings to scale to
+
+    Returns:
+        List of scaled ingredient dicts
+    """
+    if original_servings is None or original_servings <= 0:
+        _LOGGER.warning(
+            "Cannot scale recipe: original servings not available or invalid")
+        return ingredients
+
+    if target_servings <= 0:
+        _LOGGER.warning(
+            "Cannot scale recipe: target servings must be positive")
+        return ingredients
+
+    scaling_factor = target_servings / original_servings
+    _LOGGER.info("Scaling ingredients from %d to %d servings (factor: %.2f)",
+                 original_servings, target_servings, scaling_factor)
+
+    scaled_ingredients = []
+    for ingredient in ingredients:
+        scaled_ingredient = ingredient.copy()
+        if ingredient.get('quantity') is not None:
+            original_qty = ingredient['quantity']
+            scaled_qty = original_qty * scaling_factor
+            scaled_ingredient['quantity'] = scaled_qty
+            _LOGGER.debug("Scaled %s: %.2f -> %.2f",
+                          ingredient.get('name'), original_qty, scaled_qty)
+        scaled_ingredients.append(scaled_ingredient)
+
+    return scaled_ingredients
+
+
 def _format_ingredients_for_todo(ingredients: list[dict[str, Any]], convert_units: bool) -> list[str]:
     """Format ingredients as strings for todo list.
 
@@ -326,6 +367,7 @@ async def _setup_services(hass: HomeAssistant) -> None:
         """Handle the extract to list service call."""
         url = call.data[DATA_URL]
         todo_entity = call.data.get(DATA_TODO_ENTITY)
+        target_servings = call.data.get(DATA_TARGET_SERVINGS)
 
         # Get configuration
         config = _get_entry_config(hass)
@@ -363,16 +405,25 @@ async def _setup_services(hass: HomeAssistant) -> None:
             )
 
             if recipe_data:
-                _LOGGER.debug("Recipe data extracted: title='%s', ingredients count=%d",
-                              recipe_data.get('title'), len(recipe_data.get('ingredients', [])))
+                _LOGGER.debug("Recipe data extracted: title='%s', servings=%s, ingredients count=%d",
+                              recipe_data.get(
+                                  'title'), recipe_data.get('servings'),
+                              len(recipe_data.get('ingredients', [])))
 
                 # Log the raw ingredients for debugging
                 for idx, ing in enumerate(recipe_data.get('ingredients', [])):
                     _LOGGER.debug("Ingredient %d: %s", idx + 1, ing)
 
+                # Scale ingredients if target servings specified
+                ingredients = recipe_data.get('ingredients', [])
+                if target_servings:
+                    original_servings = recipe_data.get('servings')
+                    ingredients = _scale_ingredients(
+                        ingredients, original_servings, target_servings)
+
                 # Prepare all ingredients
                 todo_items = _format_ingredients_for_todo(
-                    recipe_data.get('ingredients', []),
+                    ingredients,
                     convert_units
                 )
                 _LOGGER.debug(

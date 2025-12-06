@@ -7,7 +7,8 @@ Extract recipe information from the provided text in any language (English, Germ
 
 Identify and extract:
 1. The recipe title
-2. ALL ingredients with their quantities and units
+2. The number of servings/portions (if specified)
+3. ALL ingredients with their quantities and units
 
 For each ingredient, break it down into:
 - name: the ingredient name INCLUDING any preparation notes or annotations (e.g., "Salz, gehäuft", "Peperoni, eingelegte", "Wasser, lauwarmes", "butter, softened", "Salz und Pfeffer")
@@ -35,6 +36,7 @@ Return the extracted information in the following JSON structure:
       "extraction_class": "Recipe",
       "extraction_text": "{
         \\"title\\": \\"Recipe Title\\",
+        \\"servings\\": 4,
         \\"ingredients\\": [
           {
             \\"name\\": \\"ingredient name\\",
@@ -47,4 +49,6 @@ Return the extracted information in the following JSON structure:
     }
   ]
 }
+
+Note: The servings field should be an integer representing the number of portions/servings the recipe yields. If not specified in the recipe, set it to null.
 """
