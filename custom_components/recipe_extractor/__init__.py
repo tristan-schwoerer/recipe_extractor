@@ -152,7 +152,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 "path": hass.config.path("custom_components/recipe_extractor/www"),
             }
         ])
-        add_extra_js_url(hass, "/recipe_extractor_card/recipe-extractor-card.js")
+        add_extra_js_url(
+            hass, "/recipe_extractor_card/recipe-extractor-card.js")
         _LOGGER.info("Recipe Extractor frontend resources registered")
 
     # Listen for options updates
