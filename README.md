@@ -94,10 +94,18 @@ In my testing I could use pretty much any gemini model with the free tier. This 
 
 The integration includes a custom card that provides a simple UI to extract recipes directly from your dashboard.
 
-**Card Configuration:**
+**Step 1: Add the Card as a Resource**
 
-Add the card to your Lovelace dashboard with the following configuration:
+1. Go to **Settings** → **Dashboards** → **Resources** (three dots menu in top right)
+2. Click **"+ ADD RESOURCE"**
+3. Enter the URL: `/recipe_extractor_local/recipe-extractor-card.js`
+4. Select Resource type: **JavaScript Module**
+5. Click **"CREATE"**
+6. **Refresh your browser** (Ctrl+F5 or Cmd+Shift+R)
 
+**Step 2: Add the Card to Your Dashboard**
+
+**Via YAML:**
 ```yaml
 type: custom:recipe-extractor-card
 entity: todo.shopping_list  # Required: Your todo list entity
@@ -106,14 +114,12 @@ button_text: Extract to List  # Optional: Button text (default: "Extract to List
 placeholder: Enter recipe URL...  # Optional: Input placeholder (default: "Enter recipe URL...")
 ```
 
-**Visual Configuration:**
-
-You can also add the card through the Lovelace UI:
+**Via UI:**
 1. Edit your dashboard
-2. Click "+ ADD CARD"
-3. Search for "Recipe Extractor Card"
+2. Click **"+ ADD CARD"**
+3. Search for **"Recipe Extractor Card"**
 4. Configure the card options in the visual editor
-5. Click "Save"
+5. Click **"Save"**
 
 **Features:**
 - Clean, simple input field for recipe URLs

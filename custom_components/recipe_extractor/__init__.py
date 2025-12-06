@@ -11,12 +11,13 @@ from typing import Any
 
 import voluptuous as vol
 
+import os
+
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.typing import ConfigType
-from homeassistant.components.frontend import add_extra_js_url
 
 from .unit_converter import convert_to_metric, format_quantity
 from .const import (
@@ -145,17 +146,21 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         await _setup_services(hass)
         _LOGGER.info("Recipe Extractor services registered")
 
-        # Register frontend resources - register the www directory
+        # Register the www directory as a static path
+        www_path = os.path.join(os.path.dirname(__file__), "www")
         await hass.http.async_register_static_paths([
             {
-                "url_path": f"/{DOMAIN}",
-                "path": hass.config.path(f"custom_components/{DOMAIN}/www"),
+                "url_path": f"/recipe_extractor_local",
+                "path": www_path,
             }
         ])
-        # Add the card JS as a Lovelace resource
-        add_extra_js_url(hass, f"/{DOMAIN}/recipe-extractor-card.js")
+        
         _LOGGER.info(
-            "Recipe Extractor frontend resources registered at /%s/recipe-extractor-card.js", DOMAIN)
+            "Recipe Extractor card available at /recipe_extractor_local/recipe-extractor-card.js"
+        )
+        _LOGGER.info(
+            "Add this URL as a Lovelace resource: Settings -> Dashboards -> Resources"
+        )
 
     # Listen for options updates
     entry.async_on_unload(entry.add_update_listener(async_reload_entry))
