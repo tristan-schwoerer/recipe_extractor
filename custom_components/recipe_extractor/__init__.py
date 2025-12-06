@@ -148,7 +148,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
         # Register the www directory as a static path
         www_path = os.path.join(os.path.dirname(__file__), "www")
-        
+
         # Use a unique path for this integration
         hass.http.register_static_path(
             f"/{DOMAIN}",
