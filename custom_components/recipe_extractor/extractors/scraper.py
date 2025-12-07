@@ -106,7 +106,7 @@ def _fetch_with_retry(session: requests.Session, url: str, max_retries: int = 3)
         f"Failed to fetch {url} after {max_retries} attempts")
 
 
-def fetch_recipe_text(url: str) -> str:
+def fetch_recipe_text(url: str) -> tuple[str, bool]:
     """Fetch and clean recipe text from a URL.
 
     Uses specialized scrapers when available for better structure preservation,
@@ -116,7 +116,7 @@ def fetch_recipe_text(url: str) -> str:
         url: The URL of the recipe website
 
     Returns:
-        Cleaned recipe text
+        Tuple of (cleaned recipe text, whether JSON-LD was used)
 
     Raises:
         requests.exceptions.RequestException: If fetching fails
@@ -230,7 +230,7 @@ def fetch_recipe_text(url: str) -> str:
 
         _LOGGER.info(
             "Extracted %d characters from JSON-LD recipe data", len(text))
-        return text
+        return text, True
 
     # Fallback: Look for common recipe container elements
     recipe_container = None
@@ -277,4 +277,4 @@ def fetch_recipe_text(url: str) -> str:
         text = text[:DEFAULT_MAX_TEXT_LENGTH]
 
     _LOGGER.info("Extracted %d characters of text from %s", len(text), url)
-    return text
+    return text, False

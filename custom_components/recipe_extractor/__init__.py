@@ -42,6 +42,8 @@ from .const import (
 )
 from .extractors.recipe_extractor import RecipeExtractor
 from .extractors.scraper import fetch_recipe_text
+from .models.recipe import Recipe, Ingredient
+import re
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -74,6 +76,82 @@ SERVICE_ADD_TO_LIST_SCHEMA = vol.Schema(
 )
 
 
+def _parse_jsonld_ingredient(ingredient_text: str) -> Ingredient:
+    """Parse a JSON-LD ingredient string into structured Ingredient.
+
+    Args:
+        ingredient_text: Raw ingredient string like "1 cup butter, softened"
+
+    Returns:
+        Structured Ingredient object
+    """
+    # Common unit abbreviations and full names
+    units = r'(?:cups?|tablespoons?|tbsp?|teaspoons?|tsp?|ounces?|oz|pounds?|lbs?|grams?|g|kilograms?|kg|milliliters?|ml|liters?|l|pinch|dash|clove|piece|slice)'
+
+    # Pattern to extract quantity, unit, and name
+    # Examples: "1 cup butter", "2.5 tsp salt", "250g flour", "2 eggs"
+    pattern = rf'^([\d./½⅓⅔¼¾⅛⅜⅝⅞]+(?:\s+[\d./½⅓⅔¼¾⅛⅜⅝⅞]+)?)\s*({units})?\s*(.+)$'
+    match = re.match(pattern, ingredient_text.strip(), re.IGNORECASE)
+
+    if match:
+        quantity_str, unit, name = match.groups()
+        try:
+            # Handle fractions
+            if '/' in quantity_str:
+                parts = quantity_str.split()
+                quantity = sum(eval(p) for p in parts)
+            else:
+                quantity = float(quantity_str.replace('½', '0.5').replace('⅓', '0.333')
+                                 .replace('⅔', '0.667').replace('¼', '0.25')
+                                 .replace('¾', '0.75'))
+        except:
+            quantity = None
+
+        return Ingredient(
+            name=name.strip(),
+            quantity=quantity,
+            unit=unit.strip() if unit else None
+        )
+    else:
+        # No quantity detected, just a name
+        return Ingredient(name=ingredient_text.strip(), quantity=None, unit=None)
+
+
+def _parse_jsonld_recipe(recipe_text: str) -> Recipe:
+    """Parse JSON-LD structured recipe text directly without AI.
+
+    Args:
+        recipe_text: The structured text from JSON-LD extraction
+
+    Returns:
+        Recipe object
+    """
+    lines = recipe_text.split('\n')
+    title = ""
+    servings = None
+    ingredients = []
+
+    in_ingredients = False
+
+    for line in lines:
+        line = line.strip()
+        if line.startswith("Recipe: "):
+            title = line[8:]  # Remove "Recipe: " prefix
+        elif line.startswith("Servings: "):
+            servings_text = line[10:]  # Remove "Servings: " prefix
+            # Extract number from strings like "48", "Makes 10", "6 servings"
+            match = re.search(r'\d+', servings_text)
+            if match:
+                servings = int(match.group())
+        elif line == "Ingredients:":
+            in_ingredients = True
+        elif in_ingredients and line.startswith("- "):
+            ingredient_text = line[2:]  # Remove "- " prefix
+            ingredients.append(_parse_jsonld_ingredient(ingredient_text))
+
+    return Recipe(title=title, servings=servings, ingredients=ingredients)
+
+
 def _extract_recipe_sync(url: str, api_key: str, model: str) -> dict | None:
     """Synchronous recipe extraction (runs in executor).
 
@@ -92,18 +170,26 @@ def _extract_recipe_sync(url: str, api_key: str, model: str) -> dict | None:
         "Starting recipe extraction from %s using model %s", url, model)
 
     try:
-        recipe_text = fetch_recipe_text(url)
+        recipe_text, is_jsonld = fetch_recipe_text(url)
 
         if not recipe_text or len(recipe_text.strip()) < 100:
             _LOGGER.warning("Insufficient text content from %s (length: %d)", url, len(
                 recipe_text) if recipe_text else 0)
             return None
 
-        _LOGGER.debug("Fetched %d characters of text from %s",
-                      len(recipe_text), url)
+        _LOGGER.debug("Fetched %d characters of text from %s (JSON-LD: %s)",
+                      len(recipe_text), url, is_jsonld)
 
-        extractor = RecipeExtractor(api_key=api_key, model=model)
-        recipe = extractor.extract_recipe(recipe_text)
+        # If JSON-LD data was found, parse it directly without AI
+        if is_jsonld:
+            _LOGGER.info(
+                "Using direct JSON-LD parsing (skipping AI inference)")
+            recipe = _parse_jsonld_recipe(recipe_text)
+        else:
+            # Fallback to AI extraction for unstructured HTML text
+            _LOGGER.info("Using AI extraction for unstructured text")
+            extractor = RecipeExtractor(api_key=api_key, model=model)
+            recipe = extractor.extract_recipe(recipe_text)
 
         if not recipe:
             _LOGGER.warning(
