@@ -18,6 +18,7 @@ DEFAULT_MAX_REDIRECTS = 3  # Maximum number of redirects to follow
 
 # Available models
 AVAILABLE_MODELS = [
+    "gemini-2.5-flash",
     "gemini-2.5-flash-lite",
     "gemini-2.5-pro",
 ]

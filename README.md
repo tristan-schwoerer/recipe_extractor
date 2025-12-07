@@ -78,7 +78,7 @@ recipe_extractor:
 **Configuration Options:**
 
 - `api_key` (string, **required**): Your Google Gemini API key. Must be configured either here or in the UI. **Best practice:** Store in `secrets.yaml` and reference with `!secret`.
-- `model` (string, optional): Default AI model. Options: `gemini-2.5-flash-lite`, `gemini-2.5-pro`, `gemini-2.0-flash-exp`. Default: `gemini-2.5-flash`
+- `model` (string, optional): Default AI model. Options: `gemini-2.5-flash-lite`, `gemini-2.5-pro`, `gemini-2.5-flash`. Default: `gemini-2.5-flash`
 - `convert_units` (boolean, optional): Automatically convert units to metric/imperial based on your Home Assistant settings. Default: `true`
 - `todo_entity` (string, optional): Entity ID of a todo list to add ingredients to. Example: `todo.shopping_list`
 
