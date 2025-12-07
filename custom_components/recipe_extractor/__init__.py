@@ -470,18 +470,16 @@ async def _setup_services(hass: HomeAssistant) -> None:
         try:
             # First, extract the recipe
             _LOGGER.info("Extracting recipe from %s", url)
-            extract_result = await handle_extract_recipe(
-                ServiceCall(
-                    DOMAIN,
-                    SERVICE_EXTRACT,
-                    {
-                        DATA_URL: url,
-                        DATA_MODEL: model,
-                    } if model else {
-                        DATA_URL: url,
-                    }
-                )
-            )
+
+            # Build service data for extract
+            extract_data = {DATA_URL: url}
+            if model:
+                extract_data[DATA_MODEL] = model
+
+            # Create a mock ServiceCall for extract
+            from types import SimpleNamespace
+            extract_call = SimpleNamespace(data=extract_data)
+            extract_result = await handle_extract_recipe(extract_call)
 
             # Check if extraction was successful
             if "error" in extract_result:
@@ -491,22 +489,17 @@ async def _setup_services(hass: HomeAssistant) -> None:
 
             # Then, add the extracted recipe to the list
             _LOGGER.info("Adding extracted recipe to list")
-            add_result = await handle_add_to_list(
-                ServiceCall(
-                    DOMAIN,
-                    SERVICE_ADD_TO_LIST,
-                    {
-                        DATA_RECIPE: recipe_data,
-                        DATA_TODO_ENTITY: todo_entity,
-                        DATA_TARGET_SERVINGS: target_servings,
-                    } if target_servings else {
-                        DATA_RECIPE: recipe_data,
-                        DATA_TODO_ENTITY: todo_entity,
-                    } if todo_entity else {
-                        DATA_RECIPE: recipe_data,
-                    }
-                )
-            )
+
+            # Build service data for add_to_list
+            add_data = {DATA_RECIPE: recipe_data}
+            if todo_entity:
+                add_data[DATA_TODO_ENTITY] = todo_entity
+            if target_servings:
+                add_data[DATA_TARGET_SERVINGS] = target_servings
+
+            # Create a mock ServiceCall for add_to_list
+            add_call = SimpleNamespace(data=add_data)
+            add_result = await handle_add_to_list(add_call)
 
             # Fire success event
             if "error" not in add_result:
