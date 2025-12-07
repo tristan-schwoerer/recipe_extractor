@@ -201,15 +201,15 @@ _LOGGER = logging.getLogger(__name__)
 
 def scale_ingredients(
     ingredients: list[dict[str, Any]],
-    original_servings: int | None,
-    target_servings: int
+    original_servings: int | float | None,
+    target_servings: int | float
 ) -> list[dict[str, Any]]:
     """Scale ingredient quantities based on servings.
 
     Args:
         ingredients: List of ingredient dicts with name, quantity, unit
         original_servings: Original number of servings in the recipe
-        target_servings: Target number of servings to scale to
+        target_servings: Target number of servings to scale to (can be fractional)
 
     Returns:
         List of scaled ingredient dicts
