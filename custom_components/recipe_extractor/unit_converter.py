@@ -1,6 +1,25 @@
 """Unit conversion utilities for recipe ingredients."""
 from __future__ import annotations
 
+# Unit normalizations - spoon measurements to standard English abbreviations
+SPOON_TO_STANDARD = {
+    # German teaspoons
+    "tl": ("tsp", 1),
+    "teelöffel": ("tsp", 1),
+    # German tablespoons
+    "el": ("tbsp", 1),
+    "esslöffel": ("tbsp", 1),
+    # Danish teaspoons
+    "tsk": ("tsp", 1),
+    # Danish tablespoons
+    "spsk": ("tbsp", 1),
+    # Swedish/Norwegian tablespoons
+    "msk": ("tbsp", 1),
+    # Pinch equivalents (knife tip)
+    "knsp": ("pinch", 1),  # Danish knivspids
+    "messerspitze": ("pinch", 1),  # German knife tip
+}
+
 # Volume conversions to milliliters (ml)
 VOLUME_TO_ML = {
     # Imperial/US
@@ -73,28 +92,38 @@ TEMPERATURE_UNITS = {
 
 def convert_to_metric(quantity: float, unit: str) -> tuple[float | int, str]:
     """
-    Convert imperial units to metric equivalents.
+    Convert imperial units to metric equivalents and normalize spoon measurements.
     
     Args:
         quantity: The numeric quantity
-        unit: The unit string (e.g., 'cups', 'oz', 'lb', '°F')
+        unit: The unit string (e.g., 'cups', 'oz', 'lb', '°F', 'TL', 'EL')
         
     Returns:
         Tuple of (converted_quantity, metric_unit)
-        If no conversion is needed, returns original values
         
     Examples:
         >>> convert_to_metric(1, 'cup')
         (240, 'ml')
         >>> convert_to_metric(1, 'lb')
         (454, 'g')
-        >>> convert_to_metric(350, 'f')
-        (177, '°C')
+        >>> convert_to_metric(1, 'TL')
+        (1, 'tsp')
+        >>> convert_to_metric(2, 'EL')
+        (2, 'tbsp')
     """
     if not quantity or not unit:
         return quantity, unit
     
     unit_lower = unit.lower().strip()
+    
+    # First, normalize spoon measurements to standard English abbreviations
+    if unit_lower in SPOON_TO_STANDARD:
+        standard_unit, multiplier = SPOON_TO_STANDARD[unit_lower]
+        return quantity * multiplier, standard_unit
+    
+    # Keep standard English spoon measurements as-is (don't convert to ml)
+    if unit_lower in ["tsp", "teaspoon", "teaspoons", "tbsp", "tablespoon", "tablespoons", "pinch", "dash"]:
+        return quantity, unit
     
     # Volume conversions
     if unit_lower in VOLUME_TO_ML:

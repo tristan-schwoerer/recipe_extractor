@@ -85,16 +85,39 @@ def _parse_jsonld_ingredient(ingredient_text: str) -> Ingredient:
     Returns:
         Structured Ingredient object
     """
-    # Common unit abbreviations and full names
-    units = r'(?:cups?|tablespoons?|tbsp?|teaspoons?|tsp?|ounces?|oz|pounds?|lbs?|grams?|g|kilograms?|kg|milliliters?|ml|liters?|l|pinch|dash|clove|piece|slice)'
+    # Common unit abbreviations and full names (English + German/Danish)
+    units = r'(?:cups?|tablespoons?|tbsp?|teaspoons?|tsp?|ounces?|oz|pounds?|lbs?|grams?|g|kilograms?|kg|milliliters?|ml|liters?|l|pinch|dash|clove|piece|slice|tl|el|teelöffel|esslöffel|messerspitze|tsk|spsk|knsp|msk|dl)'
 
-    # Pattern to extract quantity, unit, and name
-    # Examples: "1 cup butter", "2.5 tsp salt", "250g flour", "2 eggs"
-    pattern = rf'^([\d./½⅓⅔¼¾⅛⅜⅝⅞]+(?:\s+[\d./½⅓⅔¼¾⅛⅜⅝⅞]+)?)\s*({units})?\s*(.+)$'
-    match = re.match(pattern, ingredient_text.strip(), re.IGNORECASE)
+    # Try pattern 1: "quantity unit name" (English format: "1 cup butter")
+    pattern1 = rf'^([\d./½⅓⅔¼¾⅛⅜⅝⅞]+(?:\s+[\d./½⅓⅔¼¾⅛⅜⅝⅞]+)?)\s*({units})?\s*(.+)$'
+    match = re.match(pattern1, ingredient_text.strip(), re.IGNORECASE)
 
     if match:
         quantity_str, unit, name = match.groups()
+        try:
+            # Handle fractions
+            if '/' in quantity_str:
+                parts = quantity_str.split()
+                quantity = sum(eval(p) for p in parts)
+            else:
+                quantity = float(quantity_str.replace('½', '0.5').replace('⅓', '0.333')
+                                 .replace('⅔', '0.667').replace('¼', '0.25')
+                                 .replace('¾', '0.75'))
+        except:
+            quantity = None
+
+        return Ingredient(
+            name=name.strip(),
+            quantity=quantity,
+            unit=unit.strip() if unit else None
+        )
+    
+    # Try pattern 2: "unit name quantity" (German/Danish format: "TL Korianderpulver 0.5")
+    pattern2 = rf'^({units})\s+(.+?)\s+([\d./½⅓⅔¼¾⅛⅜⅝⅞]+(?:\s+[\d./½⅓⅔¼¾⅛⅜⅝⅞]+)?)$'
+    match = re.match(pattern2, ingredient_text.strip(), re.IGNORECASE)
+    
+    if match:
+        unit, name, quantity_str = match.groups()
         try:
             # Handle fractions
             if '/' in quantity_str:
