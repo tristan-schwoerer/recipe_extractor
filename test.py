@@ -1,11 +1,8 @@
-from recipe_extractor.scrapers.web_scraper import fetch_recipe_text
-from recipe_extractor.parsers.ai_parser import AIRecipeParser
-from recipe_extractor.parsers.jsonld_parser import JSONLDRecipeParser
+from custom_components.recipe_extractor.scrapers.web_scraper import fetch_recipe_text
+from custom_components.recipe_extractor.parsers.ai_parser import AIRecipeParser
+from custom_components.recipe_extractor.parsers.jsonld_parser import JSONLDRecipeParser
 from dotenv import load_dotenv
 import os
-import sys
-sys.path.insert(0, r'c:\Users\trist\repos\recipe_extractor\custom_components')
-
 
 # Load environment variables from .env file
 load_dotenv()
