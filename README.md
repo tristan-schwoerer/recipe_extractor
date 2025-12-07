@@ -15,6 +15,8 @@ A Home Assistant custom integration that extracts structured recipe data (ingred
 
 ### HACS (Recommended)
 
+[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=tristan-schwoerer&repository=recipe_extractor&category=integration)
+
 1. Open HACS in Home Assistant
 2. Click on "Integrations"
 3. Click the three dots in the top right corner
