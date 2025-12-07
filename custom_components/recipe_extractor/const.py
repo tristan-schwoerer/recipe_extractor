@@ -25,6 +25,7 @@ AVAILABLE_MODELS = [
 # Service names
 SERVICE_EXTRACT = "extract"
 SERVICE_EXTRACT_TO_LIST = "extract_to_list"
+SERVICE_ADD_TO_LIST = "add_to_list"
 
 # Event names
 EVENT_RECIPE_EXTRACTED = "recipe_extractor_recipe_extracted"

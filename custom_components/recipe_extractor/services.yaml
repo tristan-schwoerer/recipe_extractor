@@ -57,3 +57,34 @@ extract_to_list:
       example: "gemini-2.5-pro"
       selector:
         text:
+
+add_to_list:
+  name: Add Recipe to Shopping List
+  description: Add extracted recipe ingredients to a todo list entity (requires pre-extracted recipe data)
+  response: optional
+  fields:
+    recipe:
+      name: Recipe Data
+      description: The extracted recipe data dictionary containing ingredients
+      required: true
+      example: "{{ states.sensor.last_recipe.attributes }}"
+      selector:
+        object:
+    todo_entity:
+      name: Todo List Entity
+      description: The entity ID of the todo list to add ingredients to (e.g., todo.google_keep_shopping)
+      required: true
+      example: "todo.google_keep_shopping"
+      selector:
+        entity:
+          domain: todo
+    target_servings:
+      name: Target Servings
+      description: Optional number of servings to scale the recipe to (requires recipe to specify original servings)
+      required: false
+      example: 6
+      selector:
+        number:
+          min: 1
+          max: 100
+          mode: box

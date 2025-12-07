@@ -30,6 +30,7 @@ from .const import (
     DEFAULT_MODEL,
     SERVICE_EXTRACT,
     SERVICE_EXTRACT_TO_LIST,
+    SERVICE_ADD_TO_LIST,
     EVENT_RECIPE_EXTRACTED,
     EVENT_EXTRACTION_FAILED,
     DATA_URL,
@@ -61,8 +62,14 @@ SERVICE_EXTRACT_TO_LIST_SCHEMA = vol.Schema(
         vol.Optional(DATA_TODO_ENTITY): cv.entity_id,
         vol.Optional(DATA_MODEL): cv.string,
         vol.Optional(DATA_TARGET_SERVINGS): cv.positive_int,
-        # Allow passing pre-extracted recipe data
-        vol.Optional(DATA_RECIPE): dict,
+    }
+)
+
+SERVICE_ADD_TO_LIST_SCHEMA = vol.Schema(
+    {
+        vol.Required(DATA_RECIPE): dict,
+        vol.Optional(DATA_TODO_ENTITY): cv.entity_id,
+        vol.Optional(DATA_TARGET_SERVINGS): cv.positive_int,
     }
 )
 
@@ -182,6 +189,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # Remove services only if this is the last entry
     if not hass.data[DOMAIN]:
         hass.services.async_remove(DOMAIN, SERVICE_EXTRACT)
+        hass.services.async_remove(DOMAIN, SERVICE_ADD_TO_LIST)
         hass.services.async_remove(DOMAIN, SERVICE_EXTRACT_TO_LIST)
         _LOGGER.info("Recipe Extractor services unregistered")
 
@@ -263,7 +271,7 @@ def _format_ingredients_for_todo(ingredients: list[dict[str, Any]], convert_unit
                       idx + 1, name, quantity, unit)
 
         # Skip invalid values
-        if not name or name in ('null', 'None'):
+        if not name or name in ('null', 'None', None):
             _LOGGER.debug(
                 "Skipping ingredient %d: invalid or missing name", idx + 1)
             continue
@@ -287,6 +295,8 @@ def _format_ingredients_for_todo(ingredients: list[dict[str, Any]], convert_unit
                 # Keep original if conversion fails
 
         # Build ingredient string
+        parts.append(str(name))
+
         if quantity is not None:
             formatted_qty = format_quantity(quantity)
             if formatted_qty:
@@ -294,8 +304,6 @@ def _format_ingredients_for_todo(ingredients: list[dict[str, Any]], convert_unit
 
         if unit:
             parts.append(str(unit))
-
-        parts.append(str(name))
 
         formatted_item = ' '.join(parts)
         _LOGGER.debug("Formatted ingredient %d as: '%s'",
@@ -365,13 +373,11 @@ async def _setup_services(hass: HomeAssistant) -> None:
             )
             return {"error": error_msg}
 
-    async def handle_extract_to_list(call: ServiceCall) -> dict[str, Any]:
-        """Handle the extract to list service call."""
-        url = call.data[DATA_URL]
+    async def handle_add_to_list(call: ServiceCall) -> dict[str, Any]:
+        """Handle the add to list service call."""
+        recipe_data = call.data[DATA_RECIPE]
         todo_entity = call.data.get(DATA_TODO_ENTITY)
         target_servings = call.data.get(DATA_TARGET_SERVINGS)
-        # Check if recipe already provided
-        recipe_data = call.data.get(DATA_RECIPE)
 
         # Get configuration
         config = _get_entry_config(hass)
@@ -386,109 +392,137 @@ async def _setup_services(hass: HomeAssistant) -> None:
         if not todo_entity:
             error_msg = "No todo entity specified and no default configured"
             _LOGGER.error(error_msg)
-            hass.bus.async_fire(
-                EVENT_EXTRACTION_FAILED,
-                {
-                    DATA_URL: url,
-                    DATA_ERROR: error_msg,
-                }
-            )
             raise ServiceValidationError(error_msg)
 
-        model = call.data.get(DATA_MODEL, config["default_model"])
-        api_key = config["api_key"]
         convert_units = config.get("convert_units", True)
 
         try:
-            # Only extract if recipe data not already provided
-            if not recipe_data:
-                _LOGGER.info(
-                    "Extracting recipe from %s to add to %s using model %s", url, todo_entity, model)
-                # Run extraction in executor (blocking I/O)
-                recipe_data = await hass.async_add_executor_job(
-                    _extract_recipe_sync, url, api_key, model
-                )
+            _LOGGER.info(
+                "Adding recipe '%s' ingredients to %s", recipe_data.get('title', 'Unknown'), todo_entity)
+
+            _LOGGER.debug("Recipe data: title='%s', servings=%s, ingredients count=%d",
+                          recipe_data.get(
+                              'title'), recipe_data.get('servings'),
+                          len(recipe_data.get('ingredients', [])))
+
+            # Log the raw ingredients for debugging
+            for idx, ing in enumerate(recipe_data.get('ingredients', [])):
+                _LOGGER.debug("Ingredient %d: %s", idx + 1, ing)
+
+            # Scale ingredients if target servings specified
+            ingredients = recipe_data.get('ingredients', [])
+            if target_servings:
+                original_servings = recipe_data.get('servings')
+                ingredients = _scale_ingredients(
+                    ingredients, original_servings, target_servings)
+
+            # Prepare all ingredients
+            todo_items = _format_ingredients_for_todo(
+                ingredients,
+                convert_units
+            )
+            _LOGGER.debug(
+                "Formatted %d todo items from ingredients", len(todo_items))
+
+            # Add all ingredients concurrently for better performance
+            if todo_items:
+                _LOGGER.debug("Adding %d ingredients to %s",
+                              len(todo_items), todo_entity)
+                tasks = [
+                    hass.services.async_call(
+                        'todo',
+                        'add_item',
+                        {
+                            'entity_id': todo_entity,
+                            'item': item_text,
+                        },
+                        blocking=True,
+                    )
+                    for item_text in todo_items
+                ]
+                await asyncio.gather(*tasks)
+                _LOGGER.info("Successfully added %d ingredients to %s", len(
+                    todo_items), todo_entity)
             else:
-                _LOGGER.info(
-                    "Using pre-extracted recipe data for %s, adding to %s", url, todo_entity)
+                _LOGGER.warning(
+                    "No ingredients to add - todo_items list is empty")
 
-            if recipe_data:
-                _LOGGER.debug("Recipe data extracted: title='%s', servings=%s, ingredients count=%d",
-                              recipe_data.get(
-                                  'title'), recipe_data.get('servings'),
-                              len(recipe_data.get('ingredients', [])))
+            # Return the result as service response
+            return {
+                "recipe": recipe_data,
+                "todo_entity": todo_entity,
+                "items_added": len(todo_items)
+            }
 
-                # Log the raw ingredients for debugging
-                for idx, ing in enumerate(recipe_data.get('ingredients', [])):
-                    _LOGGER.debug("Ingredient %d: %s", idx + 1, ing)
+        except Exception as e:
+            error_msg = f"Error adding recipe to list: {str(e)}"
+            _LOGGER.error("Failed to add recipe to list: %s",
+                          error_msg, exc_info=True)
+            return {"error": error_msg}
 
-                # Scale ingredients if target servings specified
-                ingredients = recipe_data.get('ingredients', [])
-                if target_servings:
-                    original_servings = recipe_data.get('servings')
-                    ingredients = _scale_ingredients(
-                        ingredients, original_servings, target_servings)
+    async def handle_extract_to_list(call: ServiceCall) -> dict[str, Any]:
+        """Handle the extract to list service call."""
+        url = call.data[DATA_URL]
+        todo_entity = call.data.get(DATA_TODO_ENTITY)
+        target_servings = call.data.get(DATA_TARGET_SERVINGS)
+        model = call.data.get(DATA_MODEL)
 
-                # Prepare all ingredients
-                todo_items = _format_ingredients_for_todo(
-                    ingredients,
-                    convert_units
+        try:
+            # First, extract the recipe
+            _LOGGER.info("Extracting recipe from %s", url)
+            extract_result = await handle_extract_recipe(
+                ServiceCall(
+                    DOMAIN,
+                    SERVICE_EXTRACT,
+                    {
+                        DATA_URL: url,
+                        DATA_MODEL: model,
+                    } if model else {
+                        DATA_URL: url,
+                    }
                 )
-                _LOGGER.debug(
-                    "Formatted %d todo items from ingredients", len(todo_items))
+            )
 
-                # Add all ingredients concurrently for better performance
-                if todo_items:
-                    _LOGGER.debug("Adding %d ingredients to %s",
-                                  len(todo_items), todo_entity)
-                    tasks = [
-                        hass.services.async_call(
-                            'todo',
-                            'add_item',
-                            {
-                                'entity_id': todo_entity,
-                                'item': item_text,
-                            },
-                            blocking=True,
-                        )
-                        for item_text in todo_items
-                    ]
-                    await asyncio.gather(*tasks)
-                    _LOGGER.info("Successfully added %d ingredients to %s", len(
-                        todo_items), todo_entity)
-                else:
-                    _LOGGER.warning(
-                        "No ingredients to add - todo_items list is empty")
+            # Check if extraction was successful
+            if "error" in extract_result:
+                return extract_result
 
-                # Fire success event
+            recipe_data = extract_result
+
+            # Then, add the extracted recipe to the list
+            _LOGGER.info("Adding extracted recipe to list")
+            add_result = await handle_add_to_list(
+                ServiceCall(
+                    DOMAIN,
+                    SERVICE_ADD_TO_LIST,
+                    {
+                        DATA_RECIPE: recipe_data,
+                        DATA_TODO_ENTITY: todo_entity,
+                        DATA_TARGET_SERVINGS: target_servings,
+                    } if target_servings else {
+                        DATA_RECIPE: recipe_data,
+                        DATA_TODO_ENTITY: todo_entity,
+                    } if todo_entity else {
+                        DATA_RECIPE: recipe_data,
+                    }
+                )
+            )
+
+            # Fire success event
+            if "error" not in add_result:
                 hass.bus.async_fire(
                     EVENT_RECIPE_EXTRACTED,
                     {
                         DATA_URL: url,
                         DATA_RECIPE: recipe_data,
-                        DATA_TODO_ENTITY: todo_entity,
+                        DATA_TODO_ENTITY: add_result.get("todo_entity"),
                     }
                 )
-                # Return the recipe data as service response
-                return {
-                    "recipe": recipe_data,
-                    "todo_entity": todo_entity,
-                    "items_added": len(todo_items)
-                }
-            else:
-                error_msg = "Failed to extract recipe from URL - insufficient content or extraction returned no results"
-                _LOGGER.warning("%s: %s", error_msg, url)
-                hass.bus.async_fire(
-                    EVENT_EXTRACTION_FAILED,
-                    {
-                        DATA_URL: url,
-                        DATA_ERROR: error_msg,
-                    }
-                )
-                return {"error": error_msg}
+
+            return add_result
 
         except Exception as e:
-            error_msg = f"Error extracting recipe: {str(e)}"
+            error_msg = f"Error extracting recipe to list: {str(e)}"
             _LOGGER.error("Recipe extraction to list failed for %s: %s",
                           url, error_msg, exc_info=True)
             hass.bus.async_fire(
@@ -506,6 +540,14 @@ async def _setup_services(hass: HomeAssistant) -> None:
         SERVICE_EXTRACT,
         handle_extract_recipe,
         schema=SERVICE_EXTRACT_SCHEMA,
+        supports_response=True,
+    )
+
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_ADD_TO_LIST,
+        handle_add_to_list,
+        schema=SERVICE_ADD_TO_LIST_SCHEMA,
         supports_response=True,
     )
 
