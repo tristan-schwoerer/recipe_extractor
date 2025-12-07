@@ -124,8 +124,7 @@ class RecipeExtractor:
                 # Limit LLM response size to prevent truncation
                 language_model_params={"max_output_tokens": 8192},
                 # Help handle JSON parsing errors with malformed output
-                fence_output=True,
-                strict=False
+                fence_output=True
             )
 
             if result and hasattr(result, 'extractions') and result.extractions:

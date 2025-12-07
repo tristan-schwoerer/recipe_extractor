@@ -47,7 +47,7 @@ cp -r /path/to/custom_components/recipe_extractor custom_components/
 4. Click to add it and configure in the setup dialog:
    - **API Key** (Required): Your Google Gemini API key
    - **Todo Entity** (Optional): Select a todo list to add ingredients to
-   - **Model**: Choose the AI model (default: gemini-2.5-flash-lite)
+   - **Model**: Choose the AI model (default: gemini-2.5-flash)
    - **Convert Units**: Enable/disable automatic unit conversion (default: enabled)
 5. Click **Submit** to complete the setup
 
@@ -70,7 +70,7 @@ gemini_api_key: "your_google_api_key_here"
 # configuration.yaml
 recipe_extractor:
   api_key: !secret gemini_api_key
-  model: "gemini-2.5-flash-lite"  # Optional: default AI model to use
+  model: "gemini-2.5-flash"  # Optional: default AI model to use
   convert_units: true  # Optional: enable automatic unit conversion (default: true)
   todo_entity: "todo.shopping_list"  # Optional: default todo list entity for ingredients
 ```
@@ -78,14 +78,16 @@ recipe_extractor:
 **Configuration Options:**
 
 - `api_key` (string, **required**): Your Google Gemini API key. Must be configured either here or in the UI. **Best practice:** Store in `secrets.yaml` and reference with `!secret`.
-- `model` (string, optional): Default AI model. Options: `gemini-2.5-flash-lite`, `gemini-2.5-pro`, `gemini-2.0-flash-exp`. Default: `gemini-2.5-flash-lite`
+- `model` (string, optional): Default AI model. Options: `gemini-2.5-flash-lite`, `gemini-2.5-pro`, `gemini-2.0-flash-exp`. Default: `gemini-2.5-flash`
 - `convert_units` (boolean, optional): Automatically convert units to metric/imperial based on your Home Assistant settings. Default: `true`
 - `todo_entity` (string, optional): Entity ID of a todo list to add ingredients to. Example: `todo.shopping_list`
 
 
 ### Available Models
 In my testing I could use pretty much any gemini model with the free tier. This may not always be the case though 
-- `gemini-2.5-flash-lite` (default) - Fast and cost-effective
+- `gemini-2.5-flash-lite` - Fast and cost-effective
+- `gemini-2.5-flash` (default) - Balanced speed and accuracy
+- `gemini-2.5-pro` - More accurate and comprehensive
 - `gemini-2.5-pro` - More accurate but slower and more expensive
 
 ## Usage
