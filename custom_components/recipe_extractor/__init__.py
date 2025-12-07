@@ -436,11 +436,11 @@ async def _setup_services(hass: HomeAssistant) -> None:
                             'entity_id': todo_entity,
                             'item': item_text,
                         },
-                        blocking=True,
+                        blocking=False,  # Don't block on each item for better performance
                     )
                     for item_text in todo_items
                 ]
-                await asyncio.gather(*tasks)
+                await asyncio.gather(*tasks, return_exceptions=True)
                 _LOGGER.info("Successfully added %d ingredients to %s", len(
                     todo_items), todo_entity)
             else:
