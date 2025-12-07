@@ -198,7 +198,12 @@ def _extract_recipe_sync(url: str, api_key: str, model: str) -> dict | None:
 
         _LOGGER.info("Successfully extracted recipe '%s' with %d ingredients from %s",
                      recipe.title, len(recipe.ingredients), url)
-        return recipe.model_dump()
+
+        # Include extraction method in response
+        result = recipe.model_dump()
+        result['extraction_method'] = 'json-ld' if is_jsonld else 'ai'
+        result['used_ai'] = not is_jsonld
+        return result
 
     except Exception as e:
         _LOGGER.error("Error extracting recipe from %s: %s",
