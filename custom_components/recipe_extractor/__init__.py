@@ -111,11 +111,11 @@ def _parse_jsonld_ingredient(ingredient_text: str) -> Ingredient:
             quantity=quantity,
             unit=unit.strip() if unit else None
         )
-    
+
     # Try pattern 2: "unit name quantity" (German/Danish format: "TL Korianderpulver 0.5")
     pattern2 = rf'^({units})\s+(.+?)\s+([\d./½⅓⅔¼¾⅛⅜⅝⅞]+(?:\s+[\d./½⅓⅔¼¾⅛⅜⅝⅞]+)?)$'
     match = re.match(pattern2, ingredient_text.strip(), re.IGNORECASE)
-    
+
     if match:
         unit, name, quantity_str = match.groups()
         try:

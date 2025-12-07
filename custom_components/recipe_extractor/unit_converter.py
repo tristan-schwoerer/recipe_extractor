@@ -93,14 +93,14 @@ TEMPERATURE_UNITS = {
 def convert_to_metric(quantity: float, unit: str) -> tuple[float | int, str]:
     """
     Convert imperial units to metric equivalents and normalize spoon measurements.
-    
+
     Args:
         quantity: The numeric quantity
         unit: The unit string (e.g., 'cups', 'oz', 'lb', '°F', 'TL', 'EL')
-        
+
     Returns:
         Tuple of (converted_quantity, metric_unit)
-        
+
     Examples:
         >>> convert_to_metric(1, 'cup')
         (240, 'ml')
@@ -113,45 +113,45 @@ def convert_to_metric(quantity: float, unit: str) -> tuple[float | int, str]:
     """
     if not quantity or not unit:
         return quantity, unit
-    
+
     unit_lower = unit.lower().strip()
-    
+
     # First, normalize spoon measurements to standard English abbreviations
     if unit_lower in SPOON_TO_STANDARD:
         standard_unit, multiplier = SPOON_TO_STANDARD[unit_lower]
         return quantity * multiplier, standard_unit
-    
+
     # Keep standard English spoon measurements as-is (don't convert to ml)
     if unit_lower in ["tsp", "teaspoon", "teaspoons", "tbsp", "tablespoon", "tablespoons", "pinch", "dash"]:
         return quantity, unit
-    
+
     # Volume conversions
     if unit_lower in VOLUME_TO_ML:
         ml = quantity * VOLUME_TO_ML[unit_lower]
-        
+
         # Use liters for large volumes
         if ml >= 1000:
             return round(ml / 1000, 2), "l"
         else:
             return round(ml, 0), "ml"
-    
+
     # Weight conversions
     if unit_lower in WEIGHT_TO_G:
         grams = quantity * WEIGHT_TO_G[unit_lower]
-        
+
         # Use kilograms for large weights
         if grams >= 1000:
             return round(grams / 1000, 2), "kg"
         else:
             return round(grams, 0), "g"
-    
+
     # Temperature conversions
     if unit_lower in TEMPERATURE_UNITS:
         temp_type = TEMPERATURE_UNITS[unit_lower]
         if temp_type == "f":
             celsius = (quantity - 32) * 5 / 9
             return round(celsius, 0), "°C"
-    
+
     # Return original if no conversion needed
     return quantity, unit
 
@@ -159,13 +159,13 @@ def convert_to_metric(quantity: float, unit: str) -> tuple[float | int, str]:
 def format_quantity(quantity: float | int | None) -> str:
     """
     Format quantity to remove unnecessary decimals.
-    
+
     Args:
         quantity: The numeric quantity (can be int, float, or None)
-        
+
     Returns:
         Formatted string (empty string if quantity is None)
-        
+
     Examples:
         >>> format_quantity(2.0)
         '2'
@@ -176,10 +176,10 @@ def format_quantity(quantity: float | int | None) -> str:
     """
     if quantity is None:
         return ""
-    
+
     # If it's a whole number, return without decimals
     if quantity == int(quantity):
         return str(int(quantity))
-    
+
     # Otherwise, return with up to 2 decimal places, removing trailing zeros
     return f"{quantity:.2f}".rstrip('0').rstrip('.')
