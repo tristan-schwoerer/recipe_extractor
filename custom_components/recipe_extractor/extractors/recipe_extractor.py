@@ -24,7 +24,7 @@ _LOGGER = logging.getLogger(__name__)
 class RecipeExtractor:
     """Extracts structured recipe data from unstructured text using LangExtract."""
 
-    def __init__(self, api_key: str, model: str = "gemini-2.5-pro") -> None:
+    def __init__(self, api_key: str, model: str = "gemini-2.5-flash") -> None:
         """Initialize the recipe extractor.
 
         Args:
