@@ -1,5 +1,5 @@
 """
-Prompts and examples for recipe extraction using LangExtract.
+Prompts for AI-based recipe extraction using LangExtract.
 """
 
 EXTRACTION_PROMPT = """

@@ -1,5 +1,5 @@
 """
-Example recipes for training the LangExtract model.
+Example recipes for training the AI parser (LangExtract model).
 """
 from langextract.data import ExampleData, Extraction
 

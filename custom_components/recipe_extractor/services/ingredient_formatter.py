@@ -1,5 +1,16 @@
-"""Unit conversion utilities for recipe ingredients."""
+"""
+Ingredient Formatter and Unit Converter.
+
+This module handles formatting, scaling, and conversion of recipe ingredients
+for display in todo lists. Includes unit conversion utilities for imperial to
+metric conversions and multi-language unit normalization.
+"""
 from __future__ import annotations
+
+import logging
+from typing import Any
+
+_LOGGER = logging.getLogger(__name__)
 
 # Unit normalizations - spoon measurements to standard English abbreviations
 SPOON_TO_STANDARD = {
@@ -183,3 +194,116 @@ def format_quantity(quantity: float | int | None) -> str:
 
     # Otherwise, return with up to 2 decimal places, removing trailing zeros
     return f"{quantity:.2f}".rstrip('0').rstrip('.')
+
+
+_LOGGER = logging.getLogger(__name__)
+
+
+def scale_ingredients(
+    ingredients: list[dict[str, Any]],
+    original_servings: int | None,
+    target_servings: int
+) -> list[dict[str, Any]]:
+    """Scale ingredient quantities based on servings.
+
+    Args:
+        ingredients: List of ingredient dicts with name, quantity, unit
+        original_servings: Original number of servings in the recipe
+        target_servings: Target number of servings to scale to
+
+    Returns:
+        List of scaled ingredient dicts
+    """
+    if original_servings is None or original_servings <= 0:
+        _LOGGER.warning(
+            "Cannot scale recipe: original servings not available or invalid")
+        return ingredients
+
+    if target_servings <= 0:
+        _LOGGER.warning(
+            "Cannot scale recipe: target servings must be positive")
+        return ingredients
+
+    scaling_factor = target_servings / original_servings
+    _LOGGER.info("Scaling ingredients from %d to %d servings (factor: %.2f)",
+                 original_servings, target_servings, scaling_factor)
+
+    scaled_ingredients = []
+    for ingredient in ingredients:
+        scaled_ingredient = ingredient.copy()
+        if ingredient.get('quantity') is not None:
+            original_qty = ingredient['quantity']
+            scaled_qty = original_qty * scaling_factor
+            scaled_ingredient['quantity'] = scaled_qty
+            _LOGGER.debug("Scaled %s: %.2f -> %.2f",
+                          ingredient.get('name'), original_qty, scaled_qty)
+        scaled_ingredients.append(scaled_ingredient)
+
+    return scaled_ingredients
+
+
+def format_ingredients_for_todo(
+    ingredients: list[dict[str, Any]],
+    convert_units: bool
+) -> list[str]:
+    """Format ingredients as strings for todo list.
+
+    Args:
+        ingredients: List of ingredient dicts with name, quantity, unit
+        convert_units: Whether to convert imperial units to metric
+
+    Returns:
+        List of formatted ingredient strings
+    """
+    todo_items = []
+
+    for idx, ingredient in enumerate(ingredients):
+        parts = []
+        quantity = ingredient.get('quantity')
+        unit = ingredient.get('unit')
+        name = ingredient.get('name')
+
+        _LOGGER.debug("Formatting ingredient %d: name='%s', quantity='%s', unit='%s'",
+                      idx + 1, name, quantity, unit)
+
+        # Skip invalid values
+        if not name or name in ('null', 'None', None):
+            _LOGGER.debug(
+                "Skipping ingredient %d: invalid or missing name", idx + 1)
+            continue
+
+        # Clean null-like values
+        if quantity in ('null', 'None', None):
+            quantity = None
+        if unit in ('null', 'None', None):
+            unit = None
+
+        # Convert units if enabled
+        if convert_units and quantity is not None and unit:
+            try:
+                original_qty = quantity
+                original_unit = unit
+                quantity, unit = convert_to_metric(float(quantity), unit)
+                _LOGGER.debug("Converted units for %s: %s %s -> %s %s",
+                              name, original_qty, original_unit, quantity, unit)
+            except (ValueError, TypeError) as e:
+                _LOGGER.debug("Failed to convert units for %s: %s", name, e)
+                # Keep original if conversion fails
+
+        # Build ingredient string
+        parts.append(str(name))
+
+        if quantity is not None:
+            formatted_qty = format_quantity(quantity)
+            if formatted_qty:
+                parts.append(formatted_qty)
+
+        if unit:
+            parts.append(str(unit))
+
+        formatted_item = ' '.join(parts)
+        _LOGGER.debug("Formatted ingredient %d as: '%s'",
+                      idx + 1, formatted_item)
+        todo_items.append(formatted_item)
+
+    return todo_items
