@@ -210,7 +210,7 @@ def fetch_recipe_text(url: str, event_callback=None) -> tuple[str, bool]:
                 'used_ai': False,
                 'message': 'Found structured recipe data (fast parsing)'
             })
-        
+
         parts = []
         if data.get('name'):
             parts.append(f"Recipe: {data['name']}")

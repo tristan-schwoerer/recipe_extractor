@@ -41,7 +41,8 @@ def extract_recipe(url: str, api_key: str, model: str, event_callback=None) -> d
         "Starting recipe extraction from %s using model %s", url, model)
 
     try:
-        recipe_text, is_jsonld = fetch_recipe_text(url, event_callback=event_callback)
+        recipe_text, is_jsonld = fetch_recipe_text(
+            url, event_callback=event_callback)
 
         if not recipe_text or len(recipe_text.strip()) < 100:
             _LOGGER.warning(
