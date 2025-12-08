@@ -49,7 +49,8 @@ class JSONLDRecipeParser(BaseRecipeParser):
         denominator = float(parts[1].strip())
 
         if denominator == 0:
-            raise ZeroDivisionError(f"Fraction has zero denominator: {fraction_str}")
+            raise ZeroDivisionError(
+                f"Fraction has zero denominator: {fraction_str}")
 
         return numerator / denominator
 
@@ -66,7 +67,7 @@ class JSONLDRecipeParser(BaseRecipeParser):
             String with unicode fractions replaced by decimals
         """
         import re
-        
+
         # Map unicode fractions to their decimal values
         fraction_values = {
             '½': 0.5,
@@ -79,21 +80,21 @@ class JSONLDRecipeParser(BaseRecipeParser):
             '⅝': 0.625,
             '⅞': 0.875
         }
-        
+
         # Handle mixed numbers (e.g., "2½" -> "2.5")
         for fraction_char, decimal_value in fraction_values.items():
             # Pattern to match number followed by fraction (e.g., "2½")
             pattern = rf'(\d+){re.escape(fraction_char)}'
-            
+
             def replace_mixed(match):
                 whole_number = int(match.group(1))
                 return str(whole_number + decimal_value)
-            
+
             text = re.sub(pattern, replace_mixed, text)
-            
+
             # Also handle standalone fractions
             text = text.replace(fraction_char, str(decimal_value))
-        
+
         return text
 
     def _parse_ingredient(self, ingredient_text: str) -> Ingredient:
@@ -147,9 +148,11 @@ class JSONLDRecipeParser(BaseRecipeParser):
                     parts = quantity_str.split()
                     quantity = sum(self._parse_fraction(p) for p in parts)
                 else:
-                    quantity = float(self._apply_unicode_fractions(quantity_str))
+                    quantity = float(
+                        self._apply_unicode_fractions(quantity_str))
             except (ValueError, TypeError, ZeroDivisionError) as e:
-                _LOGGER.debug(f"Failed to parse quantity '{quantity_str}': {e}")
+                _LOGGER.debug(
+                    f"Failed to parse quantity '{quantity_str}': {e}")
                 quantity = None
 
             return Ingredient(
@@ -170,9 +173,11 @@ class JSONLDRecipeParser(BaseRecipeParser):
                     parts = quantity_str.split()
                     quantity = sum(self._parse_fraction(p) for p in parts)
                 else:
-                    quantity = float(self._apply_unicode_fractions(quantity_str))
+                    quantity = float(
+                        self._apply_unicode_fractions(quantity_str))
             except (ValueError, TypeError, ZeroDivisionError) as e:
-                _LOGGER.debug(f"Failed to parse quantity '{quantity_str}': {e}")
+                _LOGGER.debug(
+                    f"Failed to parse quantity '{quantity_str}': {e}")
                 quantity = None
 
             return Ingredient(
@@ -193,9 +198,11 @@ class JSONLDRecipeParser(BaseRecipeParser):
                     parts = quantity_str.split()
                     quantity = sum(self._parse_fraction(p) for p in parts)
                 else:
-                    quantity = float(self._apply_unicode_fractions(quantity_str))
+                    quantity = float(
+                        self._apply_unicode_fractions(quantity_str))
             except (ValueError, TypeError, ZeroDivisionError) as e:
-                _LOGGER.debug(f"Failed to parse quantity '{quantity_str}': {e}")
+                _LOGGER.debug(
+                    f"Failed to parse quantity '{quantity_str}': {e}")
                 quantity = None
 
             return Ingredient(
@@ -216,9 +223,11 @@ class JSONLDRecipeParser(BaseRecipeParser):
                     parts = quantity_str.split()
                     quantity = sum(self._parse_fraction(p) for p in parts)
                 else:
-                    quantity = float(self._apply_unicode_fractions(quantity_str))
+                    quantity = float(
+                        self._apply_unicode_fractions(quantity_str))
             except (ValueError, TypeError, ZeroDivisionError) as e:
-                _LOGGER.debug(f"Failed to parse quantity '{quantity_str}': {e}")
+                _LOGGER.debug(
+                    f"Failed to parse quantity '{quantity_str}': {e}")
                 quantity = None
 
             return Ingredient(
