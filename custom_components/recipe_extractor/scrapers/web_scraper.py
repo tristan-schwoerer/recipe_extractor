@@ -106,7 +106,7 @@ def _fetch_with_retry(session: requests.Session, url: str, max_retries: int = 3)
         f"Failed to fetch {url} after {max_retries} attempts")
 
 
-def fetch_recipe_text(url: str) -> tuple[str, bool]:
+def fetch_recipe_text(url: str, event_callback=None) -> tuple[str, bool]:
     """Fetch and clean recipe text from a URL.
 
     Uses specialized scrapers when available for better structure preservation,
@@ -114,6 +114,8 @@ def fetch_recipe_text(url: str) -> tuple[str, bool]:
 
     Args:
         url: The URL of the recipe website
+        event_callback: Optional callback function to fire events during extraction
+                       Should accept (event_name, event_data) parameters
 
     Returns:
         Tuple of (cleaned recipe text, whether JSON-LD was used)
@@ -201,6 +203,14 @@ def fetch_recipe_text(url: str) -> tuple[str, bool]:
 
     # If we found recipe data in JSON-LD, extract it
     if data:
+        # Fire event that JSON-LD was detected
+        if event_callback:
+            event_callback('method_detected', {
+                'extraction_method': 'json-ld',
+                'used_ai': False,
+                'message': 'Found structured recipe data (fast parsing)'
+            })
+        
         parts = []
         if data.get('name'):
             parts.append(f"Recipe: {data['name']}")
@@ -231,6 +241,14 @@ def fetch_recipe_text(url: str) -> tuple[str, bool]:
         _LOGGER.info(
             "Extracted %d characters from JSON-LD recipe data", len(text))
         return text, True
+
+    # Fire event that AI extraction will be used
+    if event_callback:
+        event_callback('method_detected', {
+            'extraction_method': 'ai',
+            'used_ai': True,
+            'message': 'No structured data found, using AI extraction (may take ~10s)'
+        })
 
     # Fallback: Look for common recipe container elements
     recipe_container = None

@@ -29,6 +29,8 @@ SERVICE_EXTRACT_TO_LIST = "extract_to_list"
 SERVICE_ADD_TO_LIST = "add_to_list"
 
 # Event names
+EVENT_EXTRACTION_STARTED = "recipe_extractor_extraction_started"
+EVENT_EXTRACTION_METHOD_DETECTED = "recipe_extractor_method_detected"
 EVENT_RECIPE_EXTRACTED = "recipe_extractor_recipe_extracted"
 EVENT_EXTRACTION_FAILED = "recipe_extractor_extraction_failed"
 
@@ -39,3 +41,5 @@ DATA_RECIPE = "recipe"
 DATA_ERROR = "error"
 DATA_TODO_ENTITY = "todo_entity"
 DATA_TARGET_SERVINGS = "target_servings"
+DATA_EXTRACTION_METHOD = "extraction_method"
+DATA_MESSAGE = "message"

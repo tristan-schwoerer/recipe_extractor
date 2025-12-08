@@ -16,7 +16,7 @@ from ..parsers.jsonld_parser import JSONLDRecipeParser
 _LOGGER = logging.getLogger(__name__)
 
 
-def extract_recipe(url: str, api_key: str, model: str) -> dict[str, Any] | None:
+def extract_recipe(url: str, api_key: str, model: str, event_callback=None) -> dict[str, Any] | None:
     """Extract recipe from URL using JSON-LD or AI.
 
     This function orchestrates the extraction process:
@@ -29,6 +29,7 @@ def extract_recipe(url: str, api_key: str, model: str) -> dict[str, Any] | None:
         url: Recipe website URL
         api_key: API key for the language model (used if AI extraction needed)
         model: Model name to use (used if AI extraction needed)
+        event_callback: Optional callback to fire events during extraction
 
     Returns:
         Dictionary with recipe data and extraction metadata, or None if extraction fails
@@ -40,7 +41,7 @@ def extract_recipe(url: str, api_key: str, model: str) -> dict[str, Any] | None:
         "Starting recipe extraction from %s using model %s", url, model)
 
     try:
-        recipe_text, is_jsonld = fetch_recipe_text(url)
+        recipe_text, is_jsonld = fetch_recipe_text(url, event_callback=event_callback)
 
         if not recipe_text or len(recipe_text.strip()) < 100:
             _LOGGER.warning(

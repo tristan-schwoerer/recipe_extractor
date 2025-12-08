@@ -16,6 +16,8 @@ from homeassistant.exceptions import ServiceValidationError
 
 from ..const import (
     DOMAIN,
+    EVENT_EXTRACTION_STARTED,
+    EVENT_EXTRACTION_METHOD_DETECTED,
     EVENT_RECIPE_EXTRACTED,
     EVENT_EXTRACTION_FAILED,
     DATA_URL,
@@ -24,6 +26,8 @@ from ..const import (
     DATA_ERROR,
     DATA_TODO_ENTITY,
     DATA_TARGET_SERVINGS,
+    DATA_EXTRACTION_METHOD,
+    DATA_MESSAGE,
 )
 from .recipe_service import extract_recipe
 from .ingredient_formatter import scale_ingredients, format_ingredients_for_todo
@@ -68,10 +72,30 @@ async def handle_extract_recipe(hass: HomeAssistant, call: ServiceCall) -> dict[
 
     _LOGGER.info("Extracting recipe from %s using model %s", url, model)
 
+    # Fire extraction started event
+    hass.bus.async_fire(
+        EVENT_EXTRACTION_STARTED,
+        {DATA_URL: url}
+    )
+
+    # Create event callback for extraction progress
+    def fire_extraction_event(event_type: str, event_data: dict):
+        """Fire extraction progress events."""
+        if event_type == 'method_detected':
+            hass.bus.fire(
+                EVENT_EXTRACTION_METHOD_DETECTED,
+                {
+                    DATA_URL: url,
+                    DATA_EXTRACTION_METHOD: event_data.get('extraction_method'),
+                    DATA_MESSAGE: event_data.get('message'),
+                    'used_ai': event_data.get('used_ai', False),
+                }
+            )
+
     try:
         # Run extraction in executor (blocking I/O)
         recipe_data = await hass.async_add_executor_job(
-            extract_recipe, url, api_key, model
+            extract_recipe, url, api_key, model, fire_extraction_event
         )
 
         if recipe_data:
