@@ -218,32 +218,6 @@ python test.py
 
 The script will extract a recipe and print the title and ingredients. You can modify the URL in `test.py` to test different recipe websites.
 
-**Manual Testing:**
-
-```python
-import os
-from dotenv import load_dotenv
-from custom_components.recipe_extractor.scrapers.web_scraper import fetch_recipe_text
-from custom_components.recipe_extractor.parsers.ai_parser import AIRecipeParser
-from custom_components.recipe_extractor.parsers.jsonld_parser import JSONLDRecipeParser
-
-load_dotenv()
-
-# Fetch recipe text
-text, is_jsonld = fetch_recipe_text("https://example.com/recipe")
-
-# Parse with appropriate parser
-if is_jsonld:
-    parser = JSONLDRecipeParser()
-else:
-    parser = AIRecipeParser(api_key=os.getenv("LANGEXTRACT_API_KEY"))
-
-recipe = parser.parse_recipe(text)
-
-print(f"Title: {recipe.title}")
-for ing in recipe.ingredients:
-    print(f"  {ing.quantity} {ing.unit} {ing.name}")
-```
 
 ## Dependencies
 
