@@ -15,7 +15,7 @@ from .const import (
     DOMAIN,
     AVAILABLE_MODELS,
     DEFAULT_MODEL,
-    CONF_TODO_ENTITY,
+    CONF_DEFAULT_TODO_ENTITY,
     CONF_DEFAULT_MODEL,
     CONF_API_KEY,
     CONF_CONVERT_UNITS,
@@ -46,9 +46,9 @@ class RecipeExtractorConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 errors[CONF_API_KEY] = "api_key_required"
 
             # Clean up empty strings to None
-            if CONF_TODO_ENTITY in user_input:
-                if not user_input[CONF_TODO_ENTITY].strip():
-                    user_input[CONF_TODO_ENTITY] = None
+            if CONF_DEFAULT_TODO_ENTITY in user_input:
+                if not user_input[CONF_DEFAULT_TODO_ENTITY].strip():
+                    user_input[CONF_DEFAULT_TODO_ENTITY] = None
 
             if not errors:
                 _LOGGER.info("Creating Recipe Extractor config entry")
@@ -69,7 +69,7 @@ class RecipeExtractorConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                             type=selector.TextSelectorType.PASSWORD,
                         ),
                     ),
-                    vol.Optional(CONF_TODO_ENTITY): selector.EntitySelector(
+                    vol.Optional(CONF_DEFAULT_TODO_ENTITY): selector.EntitySelector(
                         selector.EntitySelectorConfig(
                             domain="todo",
                         ),
@@ -125,9 +125,9 @@ class RecipeExtractorOptionsFlow(config_entries.OptionsFlow):
                     user_input[CONF_API_KEY] = api_key
 
             # Clean up empty strings to None
-            if CONF_TODO_ENTITY in user_input:
-                if not user_input.get(CONF_TODO_ENTITY, "").strip():
-                    user_input[CONF_TODO_ENTITY] = None
+            if CONF_DEFAULT_TODO_ENTITY in user_input:
+                if not user_input.get(CONF_DEFAULT_TODO_ENTITY, "").strip():
+                    user_input[CONF_DEFAULT_TODO_ENTITY] = None
 
             if not errors:
                 _LOGGER.info("Updating Recipe Extractor options")
@@ -135,7 +135,8 @@ class RecipeExtractorOptionsFlow(config_entries.OptionsFlow):
 
         # Get current options with proper defaults
         current_api_key = self.config_entry.options.get(CONF_API_KEY, "")
-        current_todo_entity = self.config_entry.options.get(CONF_TODO_ENTITY)
+        current_todo_entity = self.config_entry.options.get(
+            CONF_DEFAULT_TODO_ENTITY)
         current_model = self.config_entry.options.get(
             CONF_DEFAULT_MODEL, DEFAULT_MODEL)
         current_convert = self.config_entry.options.get(
@@ -155,13 +156,13 @@ class RecipeExtractorOptionsFlow(config_entries.OptionsFlow):
 
         # Only add default for todo_entity if it has a value
         if current_todo_entity:
-            schema_dict[vol.Optional(CONF_TODO_ENTITY, default=current_todo_entity)] = selector.EntitySelector(
+            schema_dict[vol.Optional(CONF_DEFAULT_TODO_ENTITY, default=current_todo_entity)] = selector.EntitySelector(
                 selector.EntitySelectorConfig(
                     domain="todo",
                 ),
             )
         else:
-            schema_dict[vol.Optional(CONF_TODO_ENTITY)] = selector.EntitySelector(
+            schema_dict[vol.Optional(CONF_DEFAULT_TODO_ENTITY)] = selector.EntitySelector(
                 selector.EntitySelectorConfig(
                     domain="todo",
                 ),

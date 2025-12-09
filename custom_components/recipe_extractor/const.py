@@ -5,7 +5,7 @@ DOMAIN = "recipe_extractor"
 # Configuration and option keys (unified)
 CONF_API_KEY = "api_key"
 CONF_MODEL = "model"
-CONF_TODO_ENTITY = "default_todo_entity"
+CONF_DEFAULT_TODO_ENTITY = "default_todo_entity"
 CONF_DEFAULT_MODEL = "default_model"
 CONF_CONVERT_UNITS = "convert_to_metric"
 

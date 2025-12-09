@@ -21,7 +21,7 @@ from .const import (
     DOMAIN,
     CONF_API_KEY,
     CONF_MODEL,
-    CONF_TODO_ENTITY,
+    CONF_DEFAULT_TODO_ENTITY,
     CONF_DEFAULT_MODEL,
     CONF_CONVERT_UNITS,
     DEFAULT_MODEL,
@@ -88,7 +88,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         CONF_API_KEY) or entry.data.get(CONF_API_KEY, "")
     default_model = entry.options.get(
         CONF_DEFAULT_MODEL) or entry.data.get(CONF_MODEL, DEFAULT_MODEL)
-    default_todo_entity = entry.options.get(CONF_TODO_ENTITY)
+    default_todo_entity = entry.options.get(CONF_DEFAULT_TODO_ENTITY)
     convert_units = entry.options.get(CONF_CONVERT_UNITS, True)
 
     if not api_key:
@@ -108,17 +108,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         await _setup_services(hass)
         _LOGGER.info("Recipe Extractor services registered")
 
-        # The card MUST be manually copied to /config/www/ directory by the user
-        # Custom integrations cannot automatically serve to /local/ path
-        _LOGGER.info(
-            "Recipe Extractor card is available in the integration's www/ folder"
-        )
-        _LOGGER.info(
-            "To use the card, copy www/recipe-extractor-card.js to your /config/www/ directory"
-        )
-        _LOGGER.info(
-            "Then add /local/recipe-extractor-card.js as a Lovelace resource"
-        )    # Listen for options updates
+    # Listen for options updates
     entry.async_on_unload(entry.add_update_listener(async_reload_entry))
 
     _LOGGER.debug("Recipe Extractor config entry setup complete")
