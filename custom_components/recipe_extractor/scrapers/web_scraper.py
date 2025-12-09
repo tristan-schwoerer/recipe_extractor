@@ -9,17 +9,26 @@ from __future__ import annotations
 import json
 import logging
 import time
+from io import BytesIO
 from typing import Any
 
 import requests
 from bs4 import BeautifulSoup
 
-from ..const import DEFAULT_TIMEOUT, DEFAULT_MAX_TEXT_LENGTH, DEFAULT_MAX_RESPONSE_SIZE, DEFAULT_MAX_REDIRECTS
+from ..const import (
+    DEFAULT_TIMEOUT,
+    DEFAULT_MAX_TEXT_LENGTH,
+    DEFAULT_MAX_RESPONSE_SIZE,
+    DEFAULT_MAX_REDIRECTS,
+    DEFAULT_CHUNK_SIZE,
+    DEFAULT_RETRY_ATTEMPTS,
+    DEFAULT_RETRY_BACKOFF_BASE,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
 
-def _fetch_with_retry(session: requests.Session, url: str, max_retries: int = 3) -> bytes:
+def _fetch_with_retry(session: requests.Session, url: str, max_retries: int = DEFAULT_RETRY_ATTEMPTS) -> bytes:
     """Fetch URL with exponential backoff retry logic.
 
     Args:
@@ -65,21 +74,21 @@ def _fetch_with_retry(session: requests.Session, url: str, max_retries: int = 3)
                     raise ValueError(
                         f"Response size ({content_length} bytes) exceeds maximum allowed size ({DEFAULT_MAX_RESPONSE_SIZE} bytes)")
 
-            # Download content with size limit enforcement
-            content = b''
-            for chunk in response.iter_content(chunk_size=8192):
-                content += chunk
-                if len(content) > DEFAULT_MAX_RESPONSE_SIZE:
+            # Download content with size limit enforcement using BytesIO for memory efficiency
+            content_buffer = BytesIO()
+            for chunk in response.iter_content(chunk_size=DEFAULT_CHUNK_SIZE):
+                content_buffer.write(chunk)
+                if content_buffer.tell() > DEFAULT_MAX_RESPONSE_SIZE:
                     _LOGGER.warning(
                         "Response exceeded size limit while downloading from %s", url)
                     raise ValueError(
                         f"Response size exceeds maximum allowed size ({DEFAULT_MAX_RESPONSE_SIZE} bytes)")
 
-            return content
+            return content_buffer.getvalue()
         except requests.exceptions.HTTPError as e:
             if e.response.status_code == 403 and attempt < max_retries - 1:
                 # Wait with exponential backoff for rate limiting
-                wait_time = 2 ** attempt
+                wait_time = DEFAULT_RETRY_BACKOFF_BASE ** attempt
                 _LOGGER.warning(
                     "Got 403 for %s, retrying after %ds", url, wait_time)
                 time.sleep(wait_time)
@@ -87,7 +96,7 @@ def _fetch_with_retry(session: requests.Session, url: str, max_retries: int = 3)
             raise
         except requests.exceptions.Timeout as e:
             if attempt < max_retries - 1:
-                wait_time = 2 ** attempt
+                wait_time = DEFAULT_RETRY_BACKOFF_BASE ** attempt
                 _LOGGER.warning(
                     "Timeout fetching %s, retrying after %ds", url, wait_time)
                 time.sleep(wait_time)
@@ -95,7 +104,7 @@ def _fetch_with_retry(session: requests.Session, url: str, max_retries: int = 3)
             raise
         except requests.exceptions.RequestException as e:
             if attempt < max_retries - 1:
-                wait_time = 2 ** attempt
+                wait_time = DEFAULT_RETRY_BACKOFF_BASE ** attempt
                 _LOGGER.warning(
                     "Error fetching %s: %s, retrying after %ds", url, e, wait_time)
                 time.sleep(wait_time)
@@ -149,7 +158,7 @@ def fetch_recipe_text(url: str, event_callback=None) -> tuple[str, bool]:
 
     try:
         html = _fetch_with_retry(session, url)
-        _LOGGER.debug("Successfully fetched %d bytes from %s", len(html), url)
+        _LOGGER.info("Successfully fetched %d bytes from %s", len(html), url)
     except requests.exceptions.RequestException as e:
         _LOGGER.error("Failed to fetch %s: %s", url, str(e))
         raise
@@ -273,9 +282,9 @@ def fetch_recipe_text(url: str, event_callback=None) -> tuple[str, bool]:
         patterns_to_remove.extend(['related', 'recommendation'])
 
     for pattern in patterns_to_remove:
-        for element in soup.find_all(class_=lambda x: x and pattern in x.lower()):
+        for element in soup.find_all(class_=lambda x: bool(x and pattern in x.lower())):
             element.extract()
-        for element in soup.find_all(id=lambda x: x and pattern in x.lower()):
+        for element in soup.find_all(id=lambda x: bool(x and pattern in x.lower())):
             element.extract()
 
     # Get text with newline separators

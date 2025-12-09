@@ -99,10 +99,10 @@ class JSONLDRecipeParser(BaseRecipeParser):
 
     def _parse_quantity_string(self, quantity_str: str) -> float | None:
         """Parse a quantity string that may contain fractions.
-        
+
         Args:
             quantity_str: String like '2', '1/2', '2 1/2', '2.5'
-            
+
         Returns:
             Parsed float value or None if parsing fails
         """
