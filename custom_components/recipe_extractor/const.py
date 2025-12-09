@@ -16,6 +16,16 @@ DEFAULT_MAX_TEXT_LENGTH = 4000  # Reduced to prevent LLM response truncation
 DEFAULT_MAX_RESPONSE_SIZE = 10 * 1024 * 1024  # 10MB limit
 DEFAULT_MAX_REDIRECTS = 3  # Maximum number of redirects to follow
 
+# Network settings
+DEFAULT_CHUNK_SIZE = 8192  # Bytes to read per chunk when downloading
+DEFAULT_RETRY_ATTEMPTS = 3  # Maximum number of retry attempts for failed requests
+DEFAULT_RETRY_BACKOFF_BASE = 2  # Base for exponential backoff (seconds)
+
+# UI/Frontend settings (for documentation - used in card)
+CARD_EXTRACTION_TIMEOUT_MS = 30000  # 30 seconds timeout for extraction in card
+CARD_SUCCESS_MESSAGE_DURATION_MS = 5000  # How long success messages display
+CARD_INFO_MESSAGE_DURATION_MS = 3000  # How long info messages display
+
 # Available models
 AVAILABLE_MODELS = [
     "gemini-2.5-flash",
