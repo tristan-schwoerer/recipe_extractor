@@ -55,35 +55,7 @@ cp -r /path/to/custom_components/recipe_extractor custom_components/
 
 You can reconfigure these options anytime by clicking **Configure** on the integration card.
 
-### Alternative: Configure via configuration.yaml
-
-You can also configure the integration via `configuration.yaml`. An API key must be configured either through the UI or in configuration.yaml. Note that UI configuration takes precedence over YAML configuration.
-
-**Step 1:** Add your API key to `secrets.yaml`:
-
-```yaml
-# secrets.yaml
-gemini_api_key: "your_google_api_key_here"
-```
-
-**Step 2:** Reference the secret in `configuration.yaml`:
-
-```yaml
-# configuration.yaml
-recipe_extractor:
-  api_key: !secret gemini_api_key
-  model: "gemini-2.5-flash"  # Optional: default AI model to use
-  convert_units: true  # Optional: enable automatic unit conversion (default: true)
-  todo_entity: "todo.shopping_list"  # Optional: default todo list entity for ingredients
-```
-
-**Configuration Options:**
-
-- `api_key` (string, **required**): Your Google Gemini API key. Must be configured either here or in the UI. **Best practice:** Store in `secrets.yaml` and reference with `!secret`.
-- `model` (string, optional): Default AI model. Options: `gemini-2.5-flash-lite`, `gemini-2.5-pro`, `gemini-2.5-flash`. Default: `gemini-2.5-flash`
-- `convert_units` (boolean, optional): Automatically convert units to metric/imperial based on your Home Assistant settings. Default: `true`
-- `todo_entity` (string, optional): Entity ID of a todo list to add ingredients to. Example: `todo.shopping_list`
-
+> **Note:** This integration only supports configuration through the UI. YAML configuration is not supported.
 
 ### Available Models
 In my testing I could use pretty much any gemini model with the free tier. This may not always be the case though 
@@ -227,19 +199,6 @@ The integration works with most recipe websites that use:
 
 ## Development
 
-### Adding Site-Specific Scrapers
-
-To add a scraper for a specific website, edit `extractors/scraper.py`:
-
-```python
-def fetch_recipe_text(url: str) -> str:
-    # Add your site check
-    if 'yoursite.com' in url:
-        return _fetch_yoursite_recipe(url)
-    
-    # ... rest of the function
-```
-
 ### Testing
 
 You can test the extraction outside of Home Assistant using the provided `test.py` script:
@@ -264,13 +223,22 @@ The script will extract a recipe and print the title and ingredients. You can mo
 ```python
 import os
 from dotenv import load_dotenv
-from custom_components.recipe_extractor.extractors import RecipeExtractor, fetch_recipe_text
+from custom_components.recipe_extractor.scrapers.web_scraper import fetch_recipe_text
+from custom_components.recipe_extractor.parsers.ai_parser import AIRecipeParser
+from custom_components.recipe_extractor.parsers.jsonld_parser import JSONLDRecipeParser
 
 load_dotenv()
 
-text = fetch_recipe_text("https://example.com/recipe")
-extractor = RecipeExtractor(api_key=os.getenv("LANGEXTRACT_API_KEY"))
-recipe = extractor.extract_recipe(text)
+# Fetch recipe text
+text, is_jsonld = fetch_recipe_text("https://example.com/recipe")
+
+# Parse with appropriate parser
+if is_jsonld:
+    parser = JSONLDRecipeParser()
+else:
+    parser = AIRecipeParser(api_key=os.getenv("LANGEXTRACT_API_KEY"))
+
+recipe = parser.parse_recipe(text)
 
 print(f"Title: {recipe.title}")
 for ing in recipe.ingredients:
