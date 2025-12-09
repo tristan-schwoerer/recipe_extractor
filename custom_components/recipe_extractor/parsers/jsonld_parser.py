@@ -97,6 +97,26 @@ class JSONLDRecipeParser(BaseRecipeParser):
 
         return text
 
+    def _parse_quantity_string(self, quantity_str: str) -> float | None:
+        """Parse a quantity string that may contain fractions.
+        
+        Args:
+            quantity_str: String like '2', '1/2', '2 1/2', '2.5'
+            
+        Returns:
+            Parsed float value or None if parsing fails
+        """
+        try:
+            # Handle fractions
+            if '/' in quantity_str:
+                parts = quantity_str.split()
+                return sum(self._parse_fraction(p) for p in parts)
+            else:
+                return float(self._apply_unicode_fractions(quantity_str))
+        except (ValueError, TypeError, ZeroDivisionError) as e:
+            _LOGGER.debug(f"Failed to parse quantity '{quantity_str}': {e}")
+            return None
+
     def _parse_ingredient(self, ingredient_text: str) -> Ingredient:
         """Parse a JSON-LD ingredient string into structured Ingredient.
 
@@ -122,12 +142,7 @@ class JSONLDRecipeParser(BaseRecipeParser):
 
         if match:
             quantity_str, unit, name = match.groups()
-            try:
-                quantity = float(quantity_str.replace('½', '0.5').replace('⅓', '0.333')
-                                 .replace('⅔', '0.667').replace('¼', '0.25')
-                                 .replace('¾', '0.75'))
-            except:
-                quantity = None
+            quantity = self._parse_quantity_string(quantity_str)
 
             return Ingredient(
                 name=name.strip(),
@@ -142,18 +157,7 @@ class JSONLDRecipeParser(BaseRecipeParser):
 
         if match:
             quantity_str, unit, name = match.groups()
-            try:
-                # Handle fractions
-                if '/' in quantity_str:
-                    parts = quantity_str.split()
-                    quantity = sum(self._parse_fraction(p) for p in parts)
-                else:
-                    quantity = float(
-                        self._apply_unicode_fractions(quantity_str))
-            except (ValueError, TypeError, ZeroDivisionError) as e:
-                _LOGGER.debug(
-                    f"Failed to parse quantity '{quantity_str}': {e}")
-                quantity = None
+            quantity = self._parse_quantity_string(quantity_str)
 
             return Ingredient(
                 name=name.strip(),
@@ -167,18 +171,7 @@ class JSONLDRecipeParser(BaseRecipeParser):
 
         if match:
             unit, name, quantity_str = match.groups()
-            try:
-                # Handle fractions
-                if '/' in quantity_str:
-                    parts = quantity_str.split()
-                    quantity = sum(self._parse_fraction(p) for p in parts)
-                else:
-                    quantity = float(
-                        self._apply_unicode_fractions(quantity_str))
-            except (ValueError, TypeError, ZeroDivisionError) as e:
-                _LOGGER.debug(
-                    f"Failed to parse quantity '{quantity_str}': {e}")
-                quantity = None
+            quantity = self._parse_quantity_string(quantity_str)
 
             return Ingredient(
                 name=name.strip(),
@@ -192,18 +185,7 @@ class JSONLDRecipeParser(BaseRecipeParser):
 
         if match:
             name, quantity_str = match.groups()
-            try:
-                # Handle fractions
-                if '/' in quantity_str:
-                    parts = quantity_str.split()
-                    quantity = sum(self._parse_fraction(p) for p in parts)
-                else:
-                    quantity = float(
-                        self._apply_unicode_fractions(quantity_str))
-            except (ValueError, TypeError, ZeroDivisionError) as e:
-                _LOGGER.debug(
-                    f"Failed to parse quantity '{quantity_str}': {e}")
-                quantity = None
+            quantity = self._parse_quantity_string(quantity_str)
 
             return Ingredient(
                 name=name.strip(),
@@ -217,18 +199,7 @@ class JSONLDRecipeParser(BaseRecipeParser):
 
         if match:
             quantity_str, name = match.groups()
-            try:
-                # Handle fractions
-                if '/' in quantity_str:
-                    parts = quantity_str.split()
-                    quantity = sum(self._parse_fraction(p) for p in parts)
-                else:
-                    quantity = float(
-                        self._apply_unicode_fractions(quantity_str))
-            except (ValueError, TypeError, ZeroDivisionError) as e:
-                _LOGGER.debug(
-                    f"Failed to parse quantity '{quantity_str}': {e}")
-                quantity = None
+            quantity = self._parse_quantity_string(quantity_str)
 
             return Ingredient(
                 name=name.strip(),
