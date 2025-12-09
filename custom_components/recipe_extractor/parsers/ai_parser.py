@@ -115,7 +115,7 @@ class AIRecipeParser(BaseRecipeParser):
 
                 # Create recipe if we have title and ingredients
                 if title and ingredients:
-                    _LOGGER.info("Successfully parsed recipe '%s' with %d ingredients (servings: %s)",
+                    _LOGGER.info("Successfully parsed recipe '%s' with %d ingredients using AI (servings: %s)",
                                  title, len(ingredients), servings)
                     recipe = Recipe(
                         title=title,
