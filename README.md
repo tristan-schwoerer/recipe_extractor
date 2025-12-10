@@ -48,9 +48,9 @@ cp -r /path/to/custom_components/recipe_extractor custom_components/
 3. Search for **"Recipe Extractor"**
 4. Click to add it and configure in the setup dialog:
    - **API Key** (Required): Your Google Gemini API key
-   - **Todo Entity** (Optional): Select a todo list to add ingredients to
-   - **Model**: Choose the AI model (default: gemini-2.5-flash)
-   - **Convert Units**: Enable/disable automatic unit conversion (default: enabled)
+   - **Default Todo List Entity** (Optional): Select a default todo list to add ingredients to
+   - **Default AI Model**: Choose the AI model (default: gemini-2.5-flash)
+   - **Convert to Metric Units**: Enable/disable automatic imperial to metric conversion (default: enabled)
 5. Click **Submit** to complete the setup
 
 You can reconfigure these options anytime by clicking **Configure** on the integration card.
@@ -58,10 +58,19 @@ You can reconfigure these options anytime by clicking **Configure** on the integ
 > **Note:** This integration only supports configuration through the UI. YAML configuration is not supported.
 
 ### Available Models
-In my testing I could use pretty much any gemini model with the free tier. This may not always be the case though 
-- `gemini-2.5-flash-lite` - Fast and cost-effective
+In my testing I could use pretty much any gemini model with the free tier. This may not always be the case though.
+- `gemini-2.5-flash-lite` - Fastest and cheapest (may occasionally struggle with output formatting)
 - `gemini-2.5-flash` (default) - Balanced speed and accuracy
-- `gemini-2.5-pro` - More accurate but slower and more expensive
+- `gemini-2.5-pro` - Most accurate but slower and more expensive
+
+### Unit Conversion
+
+When **Convert to Metric Units** is enabled (default), the integration automatically converts:
+- **Volume**: cups, fluid ounces, pints, quarts, gallons → ml/liters
+- **Weight**: ounces, pounds → grams/kilograms  
+- **Temperature**: Fahrenheit → Celsius
+- **Spoon measurements**: Normalized to standard abbreviations (tsp, tbsp) but NOT converted to ml
+- **Multi-language normalization**: German (TL→tsp, EL→tbsp), Danish (tsk→tsp, spsk→tbsp), Swedish/Norwegian (msk→tbsp)
 
 ## Usage
 
@@ -71,9 +80,13 @@ A companion custom card is available in a separate repository: [Recipe Extractor
 
 Install it via HACS → Frontend → Custom repositories to get a simple UI for extracting recipes directly from your dashboard.
 
+## Services
+
+The integration provides three services for different use cases:
+
 ### Service: `recipe_extractor.extract`
 
-Extract a recipe from a URL.
+Extract a recipe from a URL and return the structured data. Use this when you want to process the recipe data in automations or scripts.
 
 **Service Data:**
 
@@ -82,28 +95,95 @@ Extract a recipe from a URL.
 | `url` | Yes | Recipe website URL | `https://www.chefkoch.de/rezepte/...` |
 | `model` | No | AI model to use (uses configured default if not specified) | `gemini-2.5-pro` |
 
-**Example Service Call (uses configured default model):**
+**Response Data:**
+
+Returns a dictionary containing:
+- `title`: Recipe name
+- `servings`: Number of servings (if available)
+- `ingredients`: List of ingredients with `name`, `quantity`, `unit`, and optional `group`
+
+**Example Service Call:**
 
 ```yaml
 service: recipe_extractor.extract
 data:
   url: "https://www.chefkoch.de/rezepte/187591080204663/Gewuerzkuchen-auf-m-Blech.html"
+response_variable: recipe_data
 ```
 
-**Example Service Call (override with specific model):**
+### Service: `recipe_extractor.extract_to_list`
+
+Extract a recipe and automatically add ingredients to a todo list. This is a convenience service that combines extraction and adding to list in one call.
+
+**Service Data:**
+
+| Parameter | Required | Description | Example |
+|-----------|----------|-------------|---------|
+| `url` | Yes | Recipe website URL | `https://www.example.com/recipe` |
+| `todo_entity` | No | Todo list entity ID (uses configured default if not specified) | `todo.shopping_list` |
+| `target_servings` | No | Scale recipe to this number of servings | `6` |
+| `model` | No | AI model to use (uses configured default if not specified) | `gemini-2.5-pro` |
+
+**Example Service Call:**
 
 ```yaml
-service: recipe_extractor.extract
+service: recipe_extractor.extract_to_list
 data:
-  url: "https://www.valdemarsro.dk/krustader-med-rejesalat/"
-  model: "gemini-2.5-pro"
+  url: "https://www.example.com/chocolate-chip-cookies"
+  todo_entity: todo.shopping_list
+  target_servings: 12
 ```
 
-### Events
+### Service: `recipe_extractor.add_to_list`
 
-The integration fires the following events:
+Add a pre-extracted recipe to a todo list. Use this when you already have recipe data from the `extract` service or an event.
 
-#### `recipe_extractor_recipe_extracted`
+**Service Data:**
+
+| Parameter | Required | Description | Example |
+|-----------|----------|-------------|---------|
+| `recipe` | Yes | Recipe data dictionary from extraction | See example below |
+| `todo_entity` | No | Todo list entity ID (uses configured default if not specified) | `todo.shopping_list` |
+| `target_servings` | No | Scale recipe to this number of servings | `4` |
+
+**Example Service Call:**
+
+```yaml
+service: recipe_extractor.add_to_list
+data:
+  recipe: "{{ recipe_data }}"
+  todo_entity: todo.shopping_list
+  target_servings: 4
+```
+
+## Events
+
+The integration fires the following events that you can use in automations:
+
+### `recipe_extractor_extraction_started`
+
+Fired when recipe extraction begins.
+
+**Event Data:**
+
+```yaml
+url: "https://example.com/recipe"
+```
+
+### `recipe_extractor_method_detected`
+
+Fired when the extraction method is determined (JSON-LD structured data vs. AI extraction).
+
+**Event Data:**
+
+```yaml
+url: "https://example.com/recipe"
+extraction_method: "jsonld"  # or "ai"
+message: "Found JSON-LD structured data"
+used_ai: false
+```
+
+### `recipe_extractor_recipe_extracted`
 
 Fired when a recipe is successfully extracted.
 
@@ -113,6 +193,7 @@ Fired when a recipe is successfully extracted.
 url: "https://example.com/recipe"
 recipe:
   title: "Chocolate Chip Cookies"
+  servings: 24
   ingredients:
     - name: "all-purpose flour"
       quantity: 2.25
@@ -126,9 +207,11 @@ recipe:
       quantity: 2.0
       unit: "cups"
       group: null
+# Optional: only present when added to list via extract_to_list service
+todo_entity: "todo.shopping_list"
 ```
 
-#### `recipe_extractor_extraction_failed`
+### `recipe_extractor_extraction_failed`
 
 Fired when recipe extraction fails.
 
@@ -141,11 +224,34 @@ error: "Failed to extract recipe from URL"
 
 ## Automation Examples
 
-### Example 1: Extract Recipe and Send to Telegram
+### Example 1: Extract Recipe and Add to Shopping List
+
+Use the convenience service to extract and add in one call:
 
 ```yaml
 automation:
-  - alias: "Extract Recipe from Telegram URL"
+  - alias: "Extract Recipe from URL Input"
+    trigger:
+      - platform: state
+        entity_id: input_text.recipe_url
+    condition:
+      - condition: template
+        value_template: "{{ trigger.to_state.state | length > 0 }}"
+    action:
+      - service: recipe_extractor.extract_to_list
+        data:
+          url: "{{ states('input_text.recipe_url') }}"
+          todo_entity: todo.shopping_list
+          target_servings: 4  # Optional: scale to 4 servings
+```
+
+### Example 2: Extract Recipe with Response Variable
+
+Extract a recipe and use the response data in your automation:
+
+```yaml
+automation:
+  - alias: "Extract and Notify"
     trigger:
       - platform: event
         event_type: telegram_command
@@ -155,46 +261,116 @@ automation:
       - service: recipe_extractor.extract
         data:
           url: "{{ trigger.event.data.args }}"
-      - wait_for_trigger:
-          - platform: event
-            event_type: recipe_extractor_recipe_extracted
-        timeout: "00:02:00"
+        response_variable: recipe_data
       - service: notify.telegram
         data:
           message: |
-            **{{ wait.trigger.event.data.recipe.title }}**
+            **{{ recipe_data.title }}**
+            {% if recipe_data.servings %}Servings: {{ recipe_data.servings }}{% endif %}
             
-            Ingredients ({{ wait.trigger.event.data.recipe.ingredients | length }}):
-            {% for ingredient in wait.trigger.event.data.recipe.ingredients %}
+            Ingredients ({{ recipe_data.ingredients | length }}):
+            {% for ingredient in recipe_data.ingredients %}
             - {{ ingredient.quantity }} {{ ingredient.unit }} {{ ingredient.name }}
             {% endfor %}
 ```
 
-### Example 2: Save Recipe to Shopping List
+### Example 3: Monitor Extraction Progress
+
+React to different stages of recipe extraction:
 
 ```yaml
 automation:
-  - alias: "Add Recipe Ingredients to Shopping List"
+  - alias: "Recipe Extraction Status Updates"
     trigger:
       - platform: event
-        event_type: recipe_extractor_recipe_extracted
+        event_type: 
+          - recipe_extractor_extraction_started
+          - recipe_extractor_method_detected
+          - recipe_extractor_recipe_extracted
+          - recipe_extractor_extraction_failed
     action:
-      - repeat:
-          count: "{{ trigger.event.data.recipe.ingredients | length }}"
-          sequence:
-            - service: shopping_list.add_item
-              data:
-                name: "{{ trigger.event.data.recipe.ingredients[repeat.index - 1].quantity }} {{ trigger.event.data.recipe.ingredients[repeat.index - 1].unit }} {{ trigger.event.data.recipe.ingredients[repeat.index - 1].name }}"
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: "{{ trigger.event.event_type == 'recipe_extractor_extraction_started' }}"
+            sequence:
+              - service: notify.mobile_app
+                data:
+                  message: "Extracting recipe from {{ trigger.event.data.url }}..."
+          - conditions:
+              - condition: template
+                value_template: "{{ trigger.event.event_type == 'recipe_extractor_method_detected' }}"
+            sequence:
+              - service: notify.mobile_app
+                data:
+                  message: "{{ trigger.event.data.message }} (AI: {{ trigger.event.data.used_ai }})"
+          - conditions:
+              - condition: template
+                value_template: "{{ trigger.event.event_type == 'recipe_extractor_recipe_extracted' }}"
+            sequence:
+              - service: notify.mobile_app
+                data:
+                  message: "Successfully extracted: {{ trigger.event.data.recipe.title }}"
+          - conditions:
+              - condition: template
+                value_template: "{{ trigger.event.event_type == 'recipe_extractor_extraction_failed' }}"
+            sequence:
+              - service: notify.mobile_app
+                data:
+                  message: "Failed to extract recipe: {{ trigger.event.data.error }}"
+
+```
+
+### Example 4: Scale Recipe Based on Guest Count
+
+Automatically scale recipes based on number of guests:
+
+```yaml
+automation:
+  - alias: "Scale Recipe to Guest Count"
+    trigger:
+      - platform: state
+        entity_id: input_text.recipe_url
+    action:
+      - service: recipe_extractor.extract_to_list
+        data:
+          url: "{{ states('input_text.recipe_url') }}"
+          todo_entity: todo.shopping_list
+          target_servings: "{{ states('input_number.guest_count') | int }}"
 ```
 
 
 
-## Supported Websites
+## Features
 
-The integration works with most recipe websites that use:
-- Schema.org Recipe structured data (JSON-LD)
-- Standard HTML recipe markup
-- Common recipe container elements
+### Supported Websites
+
+The integration works with most recipe websites:
+- **Best performance**: Websites with [schema.org/Recipe](https://schema.org/Recipe) JSON-LD structured data (instant extraction, no AI needed)
+- **AI fallback**: Any website with recipe content (uses AI to extract ingredients from HTML, takes ~10s)
+
+### Recipe Scaling
+
+All services that add ingredients to todo lists support the `target_servings` parameter:
+- Automatically scales ingredient quantities based on recipe servings
+- Works with fractional servings (e.g., 2.5 servings)
+- Requires the original recipe to specify servings count
+
+**Example:**
+```yaml
+# Original recipe: 4 servings with 2 cups flour
+# target_servings: 8
+# Result: 4 cups flour added to list
+```
+
+### Multi-Language Support
+
+The integration handles recipes in multiple languages:
+- **English**: Full support for US and UK measurements
+- **German**: TL→tsp, EL→tbsp, Messerspitze→pinch
+- **Danish**: tsk→tsp, spsk→tbsp, knsp→pinch  
+- **Swedish/Norwegian**: msk→tbsp
+- Unicode fractions: ½, ⅓, ⅔, ¼, ¾, etc.
 
 ## Development
 
@@ -226,9 +402,20 @@ python test.py
 The script will extract a recipe and print the title and ingredients. You can modify the URL in `test.py` to test different recipe websites.
 
 
-## Dependencies
+## Technical Details
 
-The integration automatically installs the Python packages listed in [`requirements.txt`](requirements.txt).
+### Dependencies
+
+The integration automatically installs the Python packages listed in [`requirements.txt`](requirements.txt). Home Assistant itself is provided by the runtime environment and doesn't need to be installed separately.
+
+### How It Works
+
+1. **Web Scraping**: Downloads the recipe page HTML content
+2. **JSON-LD Detection**: First attempts to find and parse structured Schema.org/Recipe data
+3. **AI Fallback**: If no structured data found, uses LangExtract with Google Gemini to extract recipe information from HTML text
+4. **Data Validation**: Validates and structures recipe data using Pydantic models
+5. **Unit Conversion**: Optionally converts imperial units to metric
+6. **Todo Integration**: Formats and adds ingredients to Home Assistant todo lists
 
 ## Contributing
 
