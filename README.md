@@ -4,7 +4,7 @@
 
 # Recipe Extractor
 
-A Home Assistant custom integration that extracts structured recipe data (ingredients with quantities and units) from recipe websites using AI-powered extraction via Google's LangExtract library.
+A Home Assistant custom integration that extracts structured recipe data (ingredients with quantities and units) from recipe websites. It first attempts to parse [schema.org/Recipe](https://schema.org/Recipe) JSON-LD structured data, and falls back to AI-powered extraction via Google's LangExtract library when structured data is not available (which is unfortunately quite often the case).
 
 ### Requirements
 
@@ -203,14 +203,22 @@ The integration works with most recipe websites that use:
 
 You can test the extraction outside of Home Assistant using the provided `test.py` script:
 
-**Step 1:** Copy `.env.example` to `.env` and add your API key:
+**Step 1:** Create and activate a virtual environment:
+
+```bash
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+pip install -r requirements.txt
+```
+
+**Step 2:** Copy `.env.example` to `.env` and add your API key:
 
 ```bash
 cp .env.example .env
 # Edit .env and add your Google Gemini API key
 ```
 
-**Step 2:** Run the test script:
+**Step 3:** Run the test script:
 
 ```bash
 python test.py
@@ -221,12 +229,7 @@ The script will extract a recipe and print the title and ingredients. You can mo
 
 ## Dependencies
 
-The integration automatically installs these Python packages:
-- `langextract>=0.1.0` - AI-powered extraction
-- `pydantic>=2.0.0` - Data validation
-- `beautifulsoup4>=4.12.0` - HTML parsing
-- `requests>=2.31.0` - HTTP requests
-- `lxml>=4.9.0` - Fast XML/HTML processing
+The integration automatically installs the Python packages listed in [`requirements.txt`](requirements.txt).
 
 ## Contributing
 

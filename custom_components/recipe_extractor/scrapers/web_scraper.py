@@ -210,47 +210,54 @@ def fetch_recipe_text(url: str, event_callback=None) -> tuple[str, bool]:
             _LOGGER.debug("Failed to parse JSON-LD script %d: %s", idx, e)
             continue
 
-    # If we found recipe data in JSON-LD, extract it
+    # If we found recipe data in JSON-LD, validate and extract it
     if data:
-        # Fire event that JSON-LD was detected
-        if event_callback:
-            event_callback('method_detected', {
-                'extraction_method': 'json-ld',
-                'used_ai': False,
-                'message': 'Found structured recipe data (fast parsing)'
-            })
+        # Validate that we have the minimum required fields
+        recipe_ingredients = data.get('recipeIngredient')
+        if not recipe_ingredients or not isinstance(recipe_ingredients, list) or len(recipe_ingredients) == 0:
+            _LOGGER.warning(
+                "JSON-LD Recipe found but missing or empty recipeIngredient field, falling back to AI extraction")
+            data = None  # Reset data to trigger AI fallback
+        else:
+            # Fire event that JSON-LD was detected
+            if event_callback:
+                event_callback('method_detected', {
+                    'extraction_method': 'json-ld',
+                    'used_ai': False,
+                    'message': 'Found structured recipe data (fast parsing)'
+                })
 
-        parts = []
-        if data.get('name'):
-            parts.append(f"Recipe: {data['name']}")
-        if data.get('recipeYield'):
-            # Extract servings/yield information
-            recipe_yield = data['recipeYield']
-            if isinstance(recipe_yield, list):
-                recipe_yield = recipe_yield[0] if recipe_yield else None
-            if recipe_yield:
-                parts.append(f"\nServings: {recipe_yield}")
-        if data.get('recipeIngredient'):
+            parts = []
+            if data.get('name'):
+                parts.append(f"Recipe: {data['name']}")
+            if data.get('recipeYield'):
+                # Extract servings/yield information
+                recipe_yield = data['recipeYield']
+                if isinstance(recipe_yield, list):
+                    recipe_yield = recipe_yield[0] if recipe_yield else None
+                if recipe_yield:
+                    parts.append(f"\nServings: {recipe_yield}")
             parts.append("\nIngredients:")
-            for ingredient in data['recipeIngredient']:
+            for ingredient in recipe_ingredients:
                 parts.append(f"- {ingredient}")
-        # NOTE: Instructions are intentionally excluded to prevent duplicate ingredient extraction.
-        # LangExtract can extract ingredient patterns from instructions (e.g., "add 250g flour"),
-        # which creates duplicate entries when ingredients are mentioned in cooking steps.
-        # We only need title, servings, and ingredients for proper extraction.
+            # NOTE: Instructions are intentionally excluded to prevent duplicate ingredient extraction.
+            # LangExtract can extract ingredient patterns from instructions (e.g., "add 250g flour"),
+            # which creates duplicate entries when ingredients are mentioned in cooking steps.
+            # We only need title, servings, and ingredients for proper extraction.
 
-        text = '\n'.join(parts)
+            text = '\n'.join(parts)
 
-        # Apply truncation even for JSON-LD data (in case of extremely long ingredient lists)
-        if len(text) > DEFAULT_MAX_TEXT_LENGTH:
-            _LOGGER.warning("JSON-LD recipe data too large (%d chars), truncating to %d",
-                            len(text), DEFAULT_MAX_TEXT_LENGTH)
-            text = text[:DEFAULT_MAX_TEXT_LENGTH]
+            # Apply truncation even for JSON-LD data (in case of extremely long ingredient lists)
+            if len(text) > DEFAULT_MAX_TEXT_LENGTH:
+                _LOGGER.warning("JSON-LD recipe data too large (%d chars), truncating to %d",
+                                len(text), DEFAULT_MAX_TEXT_LENGTH)
+                text = text[:DEFAULT_MAX_TEXT_LENGTH]
 
-        _LOGGER.info(
-            "Extracted %d characters from JSON-LD recipe data", len(text))
-        return text, True
+            _LOGGER.info(
+                "Extracted %d characters from JSON-LD recipe data", len(text))
+            return text, True
 
+    # If we reach here, either no JSON-LD was found or it was invalid
     # Fire event that AI extraction will be used
     if event_callback:
         event_callback('method_detected', {
