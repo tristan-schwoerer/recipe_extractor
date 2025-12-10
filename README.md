@@ -61,7 +61,6 @@ You can reconfigure these options anytime by clicking **Configure** on the integ
 In my testing I could use pretty much any gemini model with the free tier. This may not always be the case though 
 - `gemini-2.5-flash-lite` - Fast and cost-effective
 - `gemini-2.5-flash` (default) - Balanced speed and accuracy
-- `gemini-2.5-pro` - More accurate and comprehensive
 - `gemini-2.5-pro` - More accurate but slower and more expensive
 
 ## Usage
